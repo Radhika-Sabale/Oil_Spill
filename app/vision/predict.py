@@ -50,25 +50,41 @@ def predict_scene(
         scene_record = scenes_mod.get(scene_str)
         if scene_record is not None:
             p = Path(scene_record.sar_path)
-            if not p.exists() and (config.SAR_DIR / p.name).exists():
-                p = config.SAR_DIR / p.name
+            if not p.exists():
+                if (config.SAR_DIR / p.name).exists():
+                    p = config.SAR_DIR / p.name
+                elif (config.DATA_DIR / p.name).exists():
+                    p = config.DATA_DIR / p.name
             if p.exists():
                 raster = raster_mod.load_sar(p)
             else:
                 scene_record = None
+
         if scene_record is None:
             p = Path(scene_str)
-            if not p.is_absolute():
-                if (config.SAR_DIR / p.name).exists():
-                    p = config.SAR_DIR / p.name
-                elif (config.SAR_DIR / p).exists():
-                    p = config.SAR_DIR / p
-                elif (config.DATA_DIR / p).exists():
-                    p = config.DATA_DIR / p
-                elif (config.ROOT_DIR / p).exists():
-                    p = config.ROOT_DIR / p
-            if not p.exists():
+            candidates = [p]
+            if not p.suffix:
+                candidates.extend([p.with_suffix(".tif"), p.with_suffix(".tiff")])
+
+            found_path = None
+            for cand in candidates:
+                if cand.is_absolute() and cand.exists():
+                    found_path = cand
+                    break
+                for base in (config.SAR_DIR, config.DATA_DIR, config.ROOT_DIR):
+                    if (base / cand.name).exists():
+                        found_path = base / cand.name
+                        break
+                    elif (base / cand).exists():
+                        found_path = base / cand
+                        break
+                if found_path is not None:
+                    break
+
+            if found_path is None or not found_path.exists():
                 raise FileNotFoundError(f"Scene or raster file not found: {scene_id_or_path}")
+
+            p = found_path
             raster = raster_mod.load_sar(p)
             scene_record = scenes_mod.describe_geotiff(p, scene_id=p.stem)
 
