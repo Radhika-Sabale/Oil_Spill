@@ -18,6 +18,7 @@ data/ais/*.csv
 data/jobs/*.json
 data/cache/
 data/m1_cache/
+data/m1_handover/
 data/zenodo/
 data/tiles/
 models/*.pt

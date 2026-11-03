@@ -53,6 +53,7 @@ class SlickPolygonFeature(BaseModel):
 class SceneMetadata(BaseModel):
     """Georeferencing and temporal metadata of the SAR acquisition."""
     source: str
+    license: Optional[str] = Field(None, description="Data license or attribution notice")
     acquired_at_utc: str
     crs: str
     raster_path: str

@@ -106,8 +106,17 @@ def main() -> int:
     all_ok = True
 
     # 1. Test suite
-    cmd_tests = [python_bin, "-m", "pytest", "tests/test_vision_contract.py", "tests/test_vision_georef.py",
-                 "tests/test_vision_robust.py", "tests/test_vision_fallback.py", "tests/test_vision_snapshot.py", "-v"]
+    cmd_tests = [
+        python_bin, "-m", "pytest",
+        "tests/test_vision_contract.py",
+        "tests/test_vision_georef.py",
+        "tests/test_vision_robust.py",
+        "tests/test_vision_fallback.py",
+        "tests/test_vision_snapshot.py",
+        "tests/test_vision_cache.py",
+        "tests/test_vision_status.py",
+        "-v"
+    ]
     ok, msg = run_step("Vision Test Suite", cmd_tests)
     results.append(("Vision Test Suite", "PASS" if ok else "FAIL", msg))
     if not ok:

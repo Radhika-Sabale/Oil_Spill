@@ -203,6 +203,7 @@ def to_contract_a(
 
     scene_block = {
         "source": str(source_str),
+        "license": getattr(scene_record, "license", None),
         "acquired_at_utc": str(acquired_at),
         "crs": str(raster.crs),
         "raster_path": str(raster_path),
