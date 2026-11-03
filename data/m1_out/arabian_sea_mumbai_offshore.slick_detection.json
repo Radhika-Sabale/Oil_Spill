@@ -1,0 +1,63 @@
+{
+  "incident_id": "arabian_sea_mumbai_offshore",
+  "case_type": "real_historical",
+  "scene": {
+    "source": "Sentinel-1 IW GRD RTC via Microsoft Planetary Computer (S1A_IW_GRDH_1SDV_20240313T010329_20240313T010354_052956_066912_rtc)",
+    "acquired_at_utc": "2024-03-13T01:03:42.419107Z",
+    "crs": "EPSG:32643",
+    "raster_path": "D:\\Projects\\tidetrace-main\\data\\sar\\arabian_sea_mumbai_offshore.tif",
+    "bounds_lonlat": [
+      71.491372,
+      18.946853,
+      71.708384,
+      19.153216
+    ]
+  },
+  "slick": {
+    "geometry": null,
+    "polygon_count": 0,
+    "area_km2": null,
+    "confidence": null,
+    "confidence_definition": "Area-weighted mean of per-polygon confidence scores, where each polygon's confidence is the mean pixel probability (U-Net mineral oil softmax probability for model, or sigmoid contrast score for baseline) over its connected component.",
+    "method": "model",
+    "polygons": [],
+    "polygons_lookalike": []
+  },
+  "mask": {
+    "path": "D:\\Projects\\tidetrace-main\\data\\m1_out\\arabian_sea_mumbai_offshore_mask.npy",
+    "shape": [
+      2048,
+      2048
+    ],
+    "dtype": "uint8",
+    "classes": {
+      "0": "sea",
+      "1": "look_alike",
+      "2": "mineral_oil"
+    },
+    "georeferenced_tif": "D:\\Projects\\tidetrace-main\\data\\m1_out\\arabian_sea_mumbai_offshore_mask.tif"
+  },
+  "model": {
+    "arch": "UnetPlusPlus",
+    "encoder": "timm-efficientnet-b0",
+    "checkpoint_sha256": "3cd5d7fdf973df7c547a5032bb02d625e40d93a6f7a77c4e0c536c288f3a112f",
+    "reported_metrics": {
+      "iou_sea": 0.9822232409336921,
+      "iou_lookalike": NaN,
+      "iou_oil": 0.8890740836986533,
+      "miou": 0.9356486623161726,
+      "pixel_accuracy": 0.9844402171947338,
+      "water_false_oil": 0.010612439372354938,
+      "sea_false_oil": 0.010612439372354938,
+      "train_loss": 0.4540107425316762,
+      "epoch": 33,
+      "seconds": 53.5
+    },
+    "reported_metrics_note": "measured by the original authors on their own validation tiles, not on this scene"
+  },
+  "quality_flags": [
+    "clean_water",
+    "no_slick_detected"
+  ],
+  "elapsed_s": 82.796
+}
