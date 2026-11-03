@@ -1,6 +1,6 @@
 {
   "note": "Ground truth of the simulation. Never read by detection, drift or scoring.",
-  "generated": "2026-09-02T19:50:18.078237+00:00",
+  "generated": "2026-11-03T09:49:23.523937+00:00",
   "seed": 1557677970,
   "bbox": [
     71.491372,
