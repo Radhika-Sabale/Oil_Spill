@@ -120,6 +120,14 @@ class ModelMetadata(BaseModel):
     )
 
 
+class ProvenanceMetadata(BaseModel):
+    """Execution and cache provenance."""
+    served_from_cache: bool = False
+    computed_at_utc: str
+    cache_key: str
+    checkpoint_sha256: Optional[str] = None
+
+
 class ContractADocument(BaseModel):
     """Contract A standard output document for M1 vision detection."""
     incident_id: str
@@ -128,6 +136,7 @@ class ContractADocument(BaseModel):
     slick: SlickDetection
     mask: MaskMetadata
     model: ModelMetadata
+    provenance: Optional[ProvenanceMetadata] = None
     quality_flags: List[str] = Field(default_factory=list)
     elapsed_s: float = Field(..., ge=0.0)
 

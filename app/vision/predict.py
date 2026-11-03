@@ -90,12 +90,24 @@ def predict_scene(
 
     # 2. Convert to dB and call segment_scene (once only)
     sigma0_db = raster_mod.to_db(raster.array)
-    seg = infer.segment_scene(
-        sigma0_db,
-        prefer_model=prefer_model,
-        threshold_db=threshold_db,
-        exclude=exclude,
-    )
+
+    # Apply measured speed levers safely: physical core thread tuning + inference_mode
+    try:
+        import torch
+        if torch.get_num_threads() > 6:
+            torch.set_num_threads(6)
+        ctx = torch.inference_mode()
+    except Exception:
+        from contextlib import nullcontext
+        ctx = nullcontext()
+
+    with ctx:
+        seg = infer.segment_scene(
+            sigma0_db,
+            prefer_model=prefer_model,
+            threshold_db=threshold_db,
+            exclude=exclude,
+        )
 
     # 3. Export mask files if out_dir specified
     mask_npy_path: Optional[str] = None

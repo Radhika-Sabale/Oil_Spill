@@ -17,6 +17,7 @@ data/ais/*.sqlite
 data/ais/*.csv
 data/jobs/*.json
 data/cache/
+data/m1_cache/
 data/zenodo/
 data/tiles/
 models/*.pt

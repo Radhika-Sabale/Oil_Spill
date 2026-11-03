@@ -142,9 +142,17 @@ def main() -> int:
     if not ok:
         all_ok = False
 
+    # 6. Demo Day Simulation Drill (Stage 4)
+    if not args.fast:
+        cmd_drill = [python_bin, "scripts/m1_demo_drill.py"]
+        ok, msg = run_step("Demo Day Resilience Drill", cmd_drill)
+        results.append(("Demo Resilience Drill", "PASS" if ok else "FAIL", msg))
+        if not ok:
+            all_ok = False
+
     # Summary table
     print("\n" + "=" * 70)
-    print("STAGE 3 VERIFICATION SUMMARY")
+    print("M1 VERIFICATION & HARDENING SUMMARY")
     print("=" * 70)
     print(f"{'Check / Step':<32} {'Result':<10} {'Details'}")
     print("-" * 70)
