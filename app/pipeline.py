@@ -8,7 +8,7 @@ nothing found, because a true negative scene is a valid result.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -239,26 +239,41 @@ def run_drift(
     trace = trace or job_store.Trace()
     clon, clat = float(centroid[0]), float(centroid[1])
 
-    trace.start("METOCEAN", "load cached currents and 10 m wind")
+    trace.start("METOCEAN", "load cached currents, 10 m wind and optional waves")
     field = fields_mod.load_for_scene(scene_id, clat, clon, t_sat)
     covers = field.covers(clat, clon, t_sat)
     described = field.describe()
-    trace.end("ok" if (covers and not field.synthetic) else "warn",
+    trace.end("ok" if (covers and not field.synthetic and field.has_currents
+                        and field.has_stokes) else "warn",
               covers_scene=bool(covers), **described)
 
     lon0, lat0 = advection.seed_particles(ring, (clon, clat), ensemble_n)
 
     trace.start("HINDCAST", "backward ensemble to the origin zone")
-    back = advection.advect(lon0, lat0, t_sat, hindcast_hours, field,
-                            direction="backward", seed=config.RANDOM_SEED)
-    i_origin = advection.pick_origin_index(back)
-    origin = cone_mod.origin_zone(back, i_origin)
+    target_hindcast_hours = min(int(hindcast_hours), config.HINDCAST_RK4_MAX_H)
+    back = advection.advect(
+        lon0, lat0, t_sat, target_hindcast_hours, field,
+        direction="backward", dt_seconds=config.HINDCAST_RK4_DT_SECONDS,
+        integrator="rk4", eddy_diffusivity_m2_s=config.HORIZONTAL_EDDY_DIFFUSIVITY_M2_S,
+        seed=config.RANDOM_SEED)
+    actual_hindcast_hours = abs((back.times[-1] - back.times[0]).total_seconds()) / 3600.0
+    i_origin = advection.pick_origin_index(back, method="minimum_variance")
+    origin = cone_mod.origin_zone(back, i_origin, pct=95.0, method="kde_hdr")
     t_origin = _utc(origin["t"])
-    trace.end("ok", origin_index=i_origin, origin_time=_iso(t_origin),
+    earliest, latest = min(back.times), max(back.times)
+    origin_window_start = max(earliest, t_origin - timedelta(hours=config.ORIGIN_TIME_HALF_WIDTH_H))
+    origin_window_end = min(latest, t_origin + timedelta(hours=config.ORIGIN_TIME_HALF_WIDTH_H))
+    trace.end("warn" if back.meta["forcing_coverage_status"] != "covered" else "ok",
+              origin_index=i_origin, origin_time=_iso(t_origin),
               spread_km=round(origin["spread_km"], 2),
+              variance_m2=round(advection.spatial_variance_m2(back, i_origin), 2),
               zone_area_km2=round(origin["area_km2"], 2),
-              rule="first hour where 90 pct ensemble spread exceeds %.0f km, clipped to [%.0f, %.0f] h"
-                   % (config.SPREAD_TRIGGER_KM, config.ORIGIN_H_MIN, config.ORIGIN_H_MAX))
+              integrated_hours=actual_hindcast_hours,
+              forcing_coverage_status=back.meta["forcing_coverage_status"],
+              forcing_outside_coverage_evaluations=back.meta["forcing_outside_coverage_evaluations"],
+              rule="global minimum ensemble spatial variance across backward hindcast",
+              origin_time_window=[_iso(origin_window_start), _iso(origin_window_end)],
+              uncertainty_method=origin["uncertainty_method"])
 
     trace.start("FORECAST", "forward ensemble from the observation time")
     fwd = advection.advect(lon0, lat0, t_sat, forecast_hours, field,
@@ -283,11 +298,17 @@ def run_drift(
             "lon": round(origin["lon"], 6),
             "lat": round(origin["lat"], 6),
             "t": _iso(t_origin),
+            "time_window_start": _iso(origin_window_start),
+            "time_window_end": _iso(origin_window_end),
+            "time_window_half_width_hours": config.ORIGIN_TIME_HALF_WIDTH_H,
             "spread_km": round(origin["spread_km"], 3),
             "buffer_km": origin["buffer_km"],
             "area_km2": round(origin["area_km2"], 3),
             "percentile": origin["percentile"],
-            "index_hours_back": i_origin * (config.DT_SECONDS / 3600.0),
+            "uncertainty_method": origin["uncertainty_method"],
+            "origin_selection_method": "global_minimum_ensemble_spatial_variance",
+            "variance_m2": round(advection.spatial_variance_m2(back, i_origin), 2),
+            "index_hours_back": abs((back.times[i_origin] - back.times[0]).total_seconds()) / 3600.0,
         },
         "origin_zone": cone_mod.cone_feature(origin["ring"], "origin_zone",
                                              t=_iso(t_origin),
@@ -297,7 +318,7 @@ def run_drift(
         "hindcast_hourly": back.hourly(),
         "hindcast_envelopes": cone_mod.envelopes_by_hour(back),
         "cone_back": cone_mod.cone_feature(cone_mod.swept_cone(back, end=i_origin),
-                                           "hindcast_cone", hours=hindcast_hours),
+                                           "hindcast_cone", hours=actual_hindcast_hours),
         "forecast_track": fwd.track_geojson(),
         "forecast_hourly": fwd.hourly(),
         "forecast_envelopes": cone_mod.envelopes_by_hour(fwd),

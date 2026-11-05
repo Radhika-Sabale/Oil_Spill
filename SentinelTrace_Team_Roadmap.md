@@ -531,11 +531,11 @@ Current ownership agreed by the team: **M1 Radhika Sabale, M2 Ruchira, M3 Prem, 
 **Owns:** `app/drift/`, Stage 3 interfaces and drift tests.
 
 **Tasks**
-1. Preserve the current solver as a baseline while implementing RK4 backward integration with the target `dt=-300 s` and maximum 18-hour window.
-2. Integrate current, windage (`alpha=0.030`) and Stokes drift only when corresponding data exists; record source, units, coverage and assumptions for each field.
-3. Obtain/parse wave inputs required by the selected Stokes formulation and verify dimensional consistency.
-4. Compare the RK4 output against zero-current and constant-current analytical cases and against the existing solver on common inputs.
-5. Define minimum-variance origin-time selection and fit/validate the 95th-percentile KDE uncertainty region. Label it illustrative if the statistical calibration is not established.
+1. Preserve the current solver as a baseline while implementing RK4 backward integration with the target `dt=-300 s` and maximum 18-hour window. The selectable RK4 path is now wired to the pipeline; analytical/step-refinement acceptance remains pending.
+2. Integrate current, windage (`alpha=0.030`), Stokes drift and horizontal eddy diffusion (`K_h=1 m²/s`) only when corresponding data exists; record source, units, coverage and assumptions for each field. The solver uses wave height, peak period and wave-from direction; it converts the direction to propagation direction for the Kenyon Stokes vector.
+3. Obtain/parse wave inputs required by the selected Stokes formulation and verify dimensional consistency. The cache builder requests significant wave height, peak period and wave direction, aligns by timestamp without extrapolation, and persists them in NPZ. **Golden Case result (5 Nov):** wind/current cached; the marine response yielded no usable wave fields, so Stokes is explicitly disabled for that cache. Retry with a supported wave product/date before claiming real Stokes forcing.
+4. Compare RK4 against zero-current/constant-current analytical cases, step refinement and the existing solver on common inputs. M3 tests now cover analytical displacement, backward time, spatially varying flow convergence and diffusion variance.
+5. Select the minimum-spread-variance snapshot at hourly intervals over negative time and return a ±1 hour window. The pipeline uses this rule. It computes a Gaussian KDE 95% HDR on a 256×256 local-metre grid and exports its convex hull; this polygon is explicitly approximate, not a calibrated confidence ellipse. Tests cover deterministic selection and polygon output; statistical calibration remains outside the verified evidence.
 6. Emit time-stamped tracks, origin window, uncertainty geometry and forcing provenance for M4/M5.
 
 **Done means:** repeatable solver tests, documented parameter values, origin output matching the agreed contract, and explicit limitation/status fields. Reverse integration is an estimate, not proof of the actual release point.
@@ -860,11 +860,14 @@ Update this section at the end of every day. Use `Inherited / unverified` for ba
 | Dataset/licence/label audit | M1 | Not started | | |
 | Scene and georeferencing validation | M2 | Not started | | |
 | Synthetic drift test | M3 | Not started | | |
+| RK4 hindcast path and 300 s / 18 h settings | M3 | Done (automated checks + direct pipeline smoke) | `app/drift/advection.py`, `app/pipeline.py`, `tests/test_m3_hindcast.py` | Full detection-to-report Golden Case run and real-case RK2 benchmark are not completed |
+| Stokes wave input and velocity | M3 | In progress (forcing unavailable) | `app/drift/fields.py`, `scripts/build_metocean_cache.py`, Golden Case metocean cache | Re-fetch a source/date with valid wave height, period and direction; current cache has current/wind only |
+| Eddy diffusion (`K_h=1 m²/s`) | M3 | Done (unit check) | `app/config.py`, `app/drift/advection.py`, `tests/test_m3_hindcast.py` | Validate diffusivity against domain evidence before scientific interpretation |
 | AIS schema and fixture | M4 | Not started | | |
 | Dashboard displays mock case | M5 | Not started | | |
 | Segmentation baseline/inference | M1 | Not started | | |
 | Real or labelled demo scene | M2 | Not started | | |
-| Origin corridor output | M3 | Not started | | |
+| Origin minimum-variance time and 95% KDE region | M3 | Implemented; approximate method documented | `app/drift/advection.py`, `app/drift/cone.py`, `app/pipeline.py`, `tests/test_m3_hindcast.py` | KDE convex hull is not calibrated as a 95% confidence ellipse |
 | Candidate filtering/ranking | M4 | Not started | | |
 | PDF + SHA-256 | M4 | Not started | | |
 | End-to-end test | All | Not started | | |

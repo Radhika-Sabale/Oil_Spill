@@ -126,6 +126,7 @@ def test_sync_scripts_parse(script):
 
 def test_no_credentials_are_committed():
     """No token, anywhere in the tree. The cheapest security control there is."""
+    import os
     import re
 
     patterns = [
@@ -133,20 +134,22 @@ def test_no_credentials_are_committed():
         re.compile(r"KGAT_[A-Za-z0-9]{24,}"),      # Kaggle access token
         re.compile(r"AKIA[0-9A-Z]{16}"),           # AWS key id
     ]
-    skip_dirs = {".git", "__pycache__", "data", "models", ".pytest_cache", "node_modules"}
+    skip_dirs = {".git", "__pycache__", "data", "models", ".pytest_cache",
+                 "node_modules", "venv", ".venv"}
     offenders = []
-    for p in ROOT.rglob("*"):
-        if not p.is_file() or p.suffix.lower() in (".pt", ".tif", ".png", ".npz", ".sqlite"):
-            continue
-        if any(part in skip_dirs for part in p.parts):
-            continue
-        try:
-            text = p.read_text(encoding="utf-8", errors="ignore")
-        except OSError:
-            continue
-        for pat in patterns:
-            if pat.search(text):
-                offenders.append("%s (%s)" % (p.relative_to(ROOT), pat.pattern))
+    for current, dirs, files in os.walk(ROOT):
+        dirs[:] = [name for name in dirs if name not in skip_dirs]
+        for name in files:
+            p = Path(current) / name
+            if p.suffix.lower() in (".pt", ".tif", ".png", ".npz", ".sqlite"):
+                continue
+            try:
+                text = p.read_text(encoding="utf-8", errors="ignore")
+            except OSError:
+                continue
+            for pat in patterns:
+                if pat.search(text):
+                    offenders.append("%s (%s)" % (p.relative_to(ROOT), pat.pattern))
     assert not offenders, "credential-shaped strings found in: %s" % offenders
 
 

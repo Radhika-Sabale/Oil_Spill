@@ -22,7 +22,7 @@ Largest mismatches:
 
 1. Stage 1 lacks verified incidence-angle normalization, the 3–12 m/s wind gate, and CA-CFAR screening.
 2. Stage 2 is a different model/data/input-channel path (U-Net++/EfficientNet-B0, three input channels, Zenodo path); Kaggle dataset fit, labels, licence, georeferencing and model lineage remain to be audited. It is not the planned four-channel ResNet-34 U-Net.
-3. Stage 3 currently uses a simpler RK2/hourly drift path, without Stokes drift, rather than the target RK4 at -300 s for up to 18 h and the specified origin/KDE method.
+3. Stage 3 now uses RK4 at 300-second steps (up to 18 hours), horizontal eddy diffusion, minimum-spread-variance hourly selection and a grid-derived KDE 95% convex-hull approximation. Stokes uses cached wave height, peak period and actual wave-from direction when all are present. M3 numerical checks pass, but the Golden Case cache has wind/current only, with no usable wave fields; its Stokes contribution remains unavailable. The convex hull is not a calibrated confidence ellipse.
 4. Stage 4 has AIS filtering/scoring and gap handling, but no H3 index, SAR dark-target discrepancy detection, or slick volume/derived pump-flow analysis.
 5. Stage 5 has a dark Leaflet console and a report endpoint, but no verified end-to-end five-stage status contract, SHA-256 report seal, or validated PDF/A output.
 
@@ -34,7 +34,7 @@ Largest mismatches:
 |---|---|---|
 | 1. Ingest/gate (M2) | Scene/raster and metocean utilities | Calibration semantics, incidence-angle normalization, wind gate and CA-CFAR |
 | 2. Segment (M1) | ML dataset/model/inference, vision adapter, geospatial vectorization | Kaggle audit, four channels, target model/config, sinuosity integration and proven lineage |
-| 3. Hindcast (M3) | Current fields, advection, land handling, uncertainty cone | RK4 -300 s, Stokes forcing, 18 h target window and minimum-variance/95% KDE method |
+| 3. Hindcast (M3) | Current/wind fields, RK4, horizontal diffusion, optional wave-driven Stokes, min-variance origin choice, KDE-derived hull, land handling | Golden Case wave inputs missing; statistical calibration and real-case comparison remain unverified |
 | 4. Attribute (M4) | AIS ingestion/interpolation/filter/scoring; API schemas | H3, radar dark targets, mass balance, derived flow and qualified evidence fields |
 | 5. Present/package (M5) | Leaflet UI, FastAPI routes, HTML/PDF report | Stage-status UI/API, provenance dossier, SHA-256 verification, PDF/A validation if claimed |
 
@@ -77,13 +77,13 @@ Largest mismatches:
 
 | File/module | What it currently does | Flag and roadmap action |
 |---|---|---|
-| `app/drift/advection.py` | Integrates backward trajectories using the current midpoint/RK2-style, hourly baseline | **PARTIAL** — preserve as comparison path; implement target RK4 behind the same interface and validate direction, units, step convergence and analytical constant-current cases. |
-| `app/drift/fields.py` | Supplies/interpolates current and wind fields | **PARTIAL** — document source, units, temporal/spatial coverage and missing data; add wave inputs only when available and validated. |
-| `app/drift/cone.py` | Builds a trajectory uncertainty/corridor geometry | **PARTIAL** — current percentile-hull approach differs from the specified 95% KDE ellipse; keep baseline and add named method/status to output. |
+| `app/drift/advection.py` | Retains the RK2 baseline and now supports selectable classical RK4; output metadata includes solver and step size | **PARTIAL** — backward pipeline selects RK4 at 300 s; validate direction, units, step convergence and analytical constant-current cases before considering it accepted. |
+| `app/drift/fields.py` | Supplies/interpolates current/wind fields and optional wave height, peak period and wave-from direction; adds Kenyon Stokes velocity toward wave propagation when inputs are complete | **PARTIAL** — formula/unit checks pass, but Golden Case waves were unavailable; do not report Stokes as observed for that cache. |
+| `app/drift/cone.py` | Builds baseline percentile hulls and a named KDE 95% HDR approximation using a 256×256 local grid and convex hull | **PARTIAL** — polygon output is tested, but convex hull may span low-density gaps and is not a calibrated 95% confidence ellipse. |
 | `app/drift/land.py` | Land interaction/land-mask support | **KEEP** — preserve and include behavior/limitations in solver comparison. |
 | `scripts/build_metocean_cache.py` | Prepares metocean cache | **PARTIAL** — does not alone establish CMEMS/ERA5/wave provenance or Stokes support; add source manifests and coverage. |
-| No Stokes implementation found | — | **MISSING** — implement/verify Kenyon formulation only after wave variable definitions/units are agreed; mark unavailable when inputs are absent. |
-| No specified minimum-variance/KDE origin selector found | — | **MISSING** — define estimator, ensemble, time sampling and 95% region method; label illustrative until validated. |
+| `scripts/build_metocean_cache.py` wave fetch | Requests wave height, peak period and wave-from direction; interpolates by UTC timestamp without extrapolation and stores optional cache fields | **PARTIAL** — Golden Case request returned no usable wave grid. A supported source/date and complete spatial/time coverage are still needed for real Stokes forcing. |
+| Minimum-variance/KDE origin path | `app/drift/advection.py` selects the global minimum ensemble spatial variance; `app/drift/cone.py` builds a 95% KDE-derived sample hull | **PARTIAL** — implementation is newly wired; validate selection, geometry stability and whether the approximate hull supports the intended uncertainty interpretation. |
 
 **Important:** the roadmap’s formula and any external forcing need dimensional checks. Do not present a hindcast origin as the proven release point.
 
@@ -153,7 +153,7 @@ Largest mismatches:
 
 The repository includes coverage for current advection, AIS gaps/live ingestion/scoring, offline pipeline, geospatial helpers, dataset layout, model smoke/UNet path, vision contract/fallback/georeferencing/cache/status and console DOM. Keep these as regression coverage while adding the target acceptance cases.
 
-**No matching target acceptance tests were found for:** incidence normalization and wind gating; CA-CFAR; four-channel invariant values and sinuosity; target RK4 step/window and Stokes; minimum-variance/95% KDE selection; H3 candidate equivalence; radar dark-target confidence/unavailability; slick volume/flow units; dossier SHA-256 verification; or PDF/A conformance. The revised roadmap’s Section 12 provides proposed acceptance checks. This audit does not run tests.
+**New M3 acceptance coverage:** `tests/test_m3_hindcast.py` checks RK4 forward/backward analytical displacement, step refinement, Stokes units/direction and missing-wave status, hourly minimum-variance selection, KDE polygon output, forcing coverage flags, diffusion variance, wave timestamp alignment and NPZ persistence. With `tests/test_advection.py` and `tests/test_offline_boundary.py`, 24 tests passed. A direct `run_drift` smoke on the cached Golden Case also returned RK4/300 s, zero out-of-coverage evaluations, origin window and the named KDE output. The full detection-to-report test suite remains unverified; prior attempts were stopped during slow integration/model tests. No usable Golden Case wave fields were returned, so real Stokes forcing is not validated.
 
 ## Prioritized change suggestions
 
@@ -168,7 +168,7 @@ The repository includes coverage for current advection, AIS gaps/live ingestion/
 
 1. M2: add/test calibration semantics, incidence normalization, matched wind gate and CA-CFAR with reported retention.
 2. M1: add linear-power four-channel derivation and sinuosity; compare the target model with the existing baseline using valid splits and georeferenced outputs.
-3. M3: add RK4 behind the current drift interface; then Stokes and the origin/KDE method with explicit forcing provenance and tests.
+3. M3: acquire supported wave fields for the Golden Case and compare hindcasts on real forcing; calibrate the KDE region before making probabilistic accuracy claims.
 4. M4: add H3 with equivalence checks; add dark-target status only with suitable radar evidence; implement assumption-labelled volume/flow ranges.
 
 ### P2 — presentation and reporting

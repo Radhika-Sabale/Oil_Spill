@@ -52,3 +52,7 @@ models/quarantine/*.pt
 p2.docx
 .claude/
 .ruff_cache/
+
+#Runtime files to be ignored
+data/server*.log
+data/tidetrace-server.pid
