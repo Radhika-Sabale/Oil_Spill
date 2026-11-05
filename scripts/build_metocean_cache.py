@@ -1,4 +1,4 @@
-"""Download real currents and 10 m wind once, then never touch the network again.
+"""Download real currents, 10 m wind and optional wave forcing once.
 
 Clause (b) of the problem statement is not mockable, so this script fetches real
 fields and freezes them into `data/metocean/<scene_id>.npz`. Run it while you
@@ -11,6 +11,8 @@ licensed CC BY 4.0. Two endpoints are used:
             hourly wind_speed_10m, wind_direction_10m   (ERA5 reanalysis)
   currents  https://marine-api.open-meteo.com/v1/marine
             hourly ocean_current_velocity, ocean_current_direction
+  waves     https://marine-api.open-meteo.com/v1/marine
+            hourly wave_height, wave_peak_period, wave_direction
 
 Conventions, which are easy to get backwards and matter enormously:
 
@@ -176,6 +178,48 @@ def fetch_currents(lats: np.ndarray, lons: np.ndarray, start: str, end: str,
     return u, v, any_data
 
 
+def fetch_waves(lats: np.ndarray, lons: np.ndarray, start: str, end: str,
+                times_ref: List[str]) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+    """Fetch significant wave height (m) and peak period (s), or report absent.
+
+    Missing or incomplete wave data remains absent rather than being
+    replaced with zeros and presented as a measured wave field.
+    """
+    lat_list, lon_list = _flatten(lats, lons)
+    params = {
+        "latitude": lat_list,
+        "longitude": lon_list,
+        "hourly": "wave_height,wave_peak_period,wave_direction",
+        "timezone": "UTC",
+        "start_date": start,
+        "end_date": end,
+    }
+    try:
+        data = _as_list(_http_json(MARINE_URL, params))
+        src_times = data[0]["hourly"]["time"]
+        hs = np.full((len(times_ref), lats.size, lons.size), np.nan, dtype=np.float32)
+        tp = np.full_like(hs, np.nan)
+        direction = np.full_like(hs, np.nan)
+        for k, block in enumerate(data):
+            i, j = divmod(k, lons.size)
+            hourly = block["hourly"]
+            block_hs = np.asarray(hourly.get("wave_height") or [], dtype=float)
+            block_tp = np.asarray(hourly.get("wave_peak_period") or [], dtype=float)
+            block_dir = np.asarray(hourly.get("wave_direction") or [], dtype=float)
+            if (block_hs.size == len(src_times) and block_tp.size == len(src_times)
+                    and block_dir.size == len(src_times)):
+                hs[:, i, j] = _interpolate_hourly(src_times, times_ref, block_hs)
+                tp[:, i, j] = _interpolate_hourly(src_times, times_ref, block_tp)
+                direction[:, i, j] = _interpolate_hourly(src_times, times_ref, block_dir)
+        if not (np.isfinite(hs).any() and np.isfinite(tp).any()
+                and np.isfinite(direction).any()):
+            return None, None, None
+        return hs, tp, direction
+    except Exception as exc:
+        print("  waves unavailable: %s" % exc)
+        return None, None, None
+
+
 def _flatten(lats: np.ndarray, lons: np.ndarray) -> Tuple[List[float], List[float]]:
     lat_list: List[float] = []
     lon_list: List[float] = []
@@ -189,6 +233,29 @@ def _flatten(lats: np.ndarray, lons: np.ndarray) -> Tuple[List[float], List[floa
 def _align(src_times: List[str], ref_times: List[str]) -> np.ndarray:
     pos = {t: i for i, t in enumerate(src_times)}
     return np.array([pos.get(t, min(i, len(src_times) - 1)) for i, t in enumerate(ref_times)], dtype=int)
+
+
+def _interpolate_hourly(src_times: List[str], ref_times: List[str], values) -> np.ndarray:
+    """Interpolate wave values by UTC timestamp; never align by array index."""
+    def epoch(value):
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+
+    source_t = np.asarray([epoch(t) for t in src_times], dtype=float)
+    target_t = np.asarray([epoch(t) for t in ref_times], dtype=float)
+    values = np.asarray(values, dtype=float)
+    valid = np.isfinite(values)
+    if valid.sum() == 0:
+        return np.full(target_t.shape, np.nan, dtype=float)
+    if valid.sum() == 1:
+        out = np.full(target_t.shape, np.nan, dtype=float)
+        exact = np.isclose(target_t, source_t[valid][0], atol=1.0)
+        out[exact] = values[valid][0]
+        return out
+    return np.interp(target_t, source_t[valid], values[valid],
+                     left=np.nan, right=np.nan)
 
 
 def fetch_currents_cmems(lats: np.ndarray, lons: np.ndarray, start: str, end: str,
@@ -297,11 +364,22 @@ def build_box(scene_id: str, lat: float, lon: float, t_center: datetime,
         print("  WARNING: no ocean current data returned for this box and period.")
         print("  Drift will be wind driven only. That is a real limitation, not a mock.")
 
+    print("[%s] wave forcing" % scene_id)
+    wave_hs, wave_tp, wave_dir = fetch_waves(lats, lons, start, end, times)
+    wave_data = {}
+    if wave_hs is not None and wave_tp is not None and wave_dir is not None:
+        wave_data = {"wave_hs": wave_hs, "wave_tp": wave_tp, "wave_dir": wave_dir}
+        print("  significant wave height and peak period cached")
+    else:
+        print("  WARNING: wave forcing unavailable; Stokes drift will be omitted")
+
     field = fields_mod._from_arrays(
         times, lats, lons,
-        {"u_current": uc, "v_current": vc, "u_wind10": uw, "v_wind10": vw},
-        source="Open-Meteo ERA5 10 m wind + %s currents (cached %s)"
+        {"u_current": uc, "v_current": vc, "u_wind10": uw, "v_wind10": vw,
+         **wave_data},
+        source="Open-Meteo ERA5 10 m wind + %s currents%s (cached %s)"
                % (current_source or "no",
+                  " + marine Hs/Tp/direction waves" if wave_data else "",
                   datetime.now(timezone.utc).strftime("%Y-%m-%d")),
         license_=LICENSE + ("; " + CMEMS_LICENSE if current_source and "CMEMS" in current_source else ""),
         scene_id=scene_id,
@@ -315,7 +393,8 @@ def build_box(scene_id: str, lat: float, lon: float, t_center: datetime,
           % (path.name, len(times), speed, wspeed))
     return {"scene_id": scene_id, "path": str(path), "hours": len(times),
             "mean_current_ms": round(speed, 4), "mean_wind_ms": round(wspeed, 3),
-            "currents_available": ok, "current_source": current_source}
+            "currents_available": ok, "current_source": current_source,
+            "stokes_available": fields_mod.load_npz(path).has_stokes}
 
 
 def main() -> int:

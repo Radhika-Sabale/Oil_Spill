@@ -12,6 +12,9 @@ Storage formats accepted, in order of preference:
 Variables, all on a regular (time, lat, lon) grid:
   u_current, v_current   metres per second, eastward and northward
   u_wind10, v_wind10     metres per second at 10 m, eastward and northward
+Optional wave variables: wave_hs in metres, wave_tp in seconds and wave_dir
+in degrees clockwise from north, reported as the direction waves come from.
+Stokes velocity reverses that bearing to the direction waves travel toward.
 
 If nothing is found the loader returns a clearly flagged constant field and the
 UI shows DEMO METOCEAN in red. That path exists so the app never crashes, not
@@ -30,6 +33,7 @@ import numpy as np
 from .. import config
 
 _VARS = ("u_current", "v_current", "u_wind10", "v_wind10")
+_OPTIONAL_VARS = ("wave_hs", "wave_tp", "wave_dir")
 
 
 def _to_epoch(t) -> float:
@@ -93,6 +97,17 @@ class MetoceanField:
             return False
         return bool(np.any(np.abs(u) > 1e-6) or np.any(np.abs(v) > 1e-6))
 
+    @property
+    def has_stokes(self) -> bool:
+        """Whether complete finite wave-height/period cubes are available."""
+        if not all(name in self.data for name in _OPTIONAL_VARS):
+            return False
+        hs, tp, direction = (self.data["wave_hs"], self.data["wave_tp"],
+                             self.data["wave_dir"])
+        return bool(np.isfinite(hs).all() and np.isfinite(tp).all()
+                    and np.isfinite(direction).all() and np.all(hs >= 0)
+                    and np.all(tp > 0))
+
     def describe(self) -> Dict[str, Any]:
         t0, t1 = self.time_range_iso
         return {
@@ -103,6 +118,14 @@ class MetoceanField:
             "live": self.live,
             "fetched_utc": self.fetched_utc,
             "has_currents": self.has_currents,
+            "stokes_available": self.has_stokes,
+            "stokes_direction_source": "wave_dir, direction waves come from, reversed to propagation direction",
+            "wave_height_range_m": ([float(np.nanmin(self.data["wave_hs"])),
+                                     float(np.nanmax(self.data["wave_hs"]))]
+                                    if self.has_stokes else None),
+            "wave_peak_period_range_s": ([float(np.nanmin(self.data["wave_tp"])),
+                                           float(np.nanmax(self.data["wave_tp"]))]
+                                          if self.has_stokes else None),
             "mean_current_ms": round(float(np.mean(np.hypot(
                 self.data["u_current"], self.data["v_current"]))), 4),
             "mean_wind_ms": round(float(np.mean(np.hypot(
@@ -136,6 +159,11 @@ class MetoceanField:
             a = _bilinear(cube[ti[0]], yi, yw, xi, xw)
             b = _bilinear(cube[ti[1]], yi, yw, xi, xw)
             out[name] = a * (1.0 - tw) + b * tw
+        for name in _OPTIONAL_VARS:
+            if name in self.data:
+                a = _bilinear(self.data[name][ti[0]], yi, yw, xi, xw)
+                b = _bilinear(self.data[name][ti[1]], yi, yw, xi, xw)
+                out[name] = a * (1.0 - tw) + b * tw
         return out
 
     def velocity(self, lat, lon, t, alpha: float = None, deflection_deg: float = None):
@@ -154,7 +182,20 @@ class MetoceanField:
             th = np.radians(deflection_deg) * sign
             ct, st = np.cos(th), np.sin(th)
             uw, vw = uw * ct - vw * st, uw * st + vw * ct
-        return s["u_current"] + alpha * uw, s["v_current"] + alpha * vw
+        u = s["u_current"] + alpha * uw
+        v = s["v_current"] + alpha * vw
+        if self.has_stokes:
+            hs, tp = s["wave_hs"], s["wave_tp"]
+            speed = np.divide(2.0 * np.pi**2 * hs**2,
+                              9.80665 * tp**3,
+                              out=np.zeros_like(hs, dtype=float), where=tp > 0)
+            # Marine API wave direction is a FROM bearing, clockwise from
+            # north. Convert it to the TO direction and then east/north unit
+            # components. This avoids using wind as a wave-direction proxy.
+            toward = np.radians(np.mod(s["wave_dir"] + 180.0, 360.0))
+            u = u + speed * np.sin(toward)
+            v = v + speed * np.cos(toward)
+        return u, v
 
 
 def _interp_index(axis: np.ndarray, value: float) -> Tuple[Tuple[int, int], float]:
@@ -211,6 +252,10 @@ def _from_arrays(times, lats, lons, data, source, license_, scene_id, synthetic=
         arr = np.asarray(data[k], dtype=float)
         arr = arr[order_t][:, order_y][:, :, order_x]
         cube[k] = np.nan_to_num(arr, nan=0.0)
+    for k in _OPTIONAL_VARS:
+        if k in data:
+            arr = np.asarray(data[k], dtype=float)
+            cube[k] = arr[order_t][:, order_y][:, :, order_x]
     return MetoceanField(
         times=times[order_t],
         lats=lats[order_y],
@@ -231,9 +276,10 @@ def load_npz(path: Path) -> MetoceanField:
             meta = json.loads(str(z["meta"]))
         except Exception:
             meta = {}
+    data = {k: z[k] for k in _VARS}
+    data.update({k: z[k] for k in _OPTIONAL_VARS if k in z})
     return _from_arrays(
-        z["time"], z["lat"], z["lon"],
-        {k: z[k] for k in _VARS},
+        z["time"], z["lat"], z["lon"], data,
         meta.get("source", "cached npz"),
         meta.get("license", ""),
         meta.get("scene_id", path.stem),
@@ -242,9 +288,11 @@ def load_npz(path: Path) -> MetoceanField:
 
 def load_json(path: Path) -> MetoceanField:
     doc = json.loads(Path(path).read_text(encoding="utf-8"))
+    data = {k: doc[k] for k in _VARS}
+    data.update({k: doc[k] for k in _OPTIONAL_VARS if k in doc})
     return _from_arrays(
         doc["time"], doc["lat"], doc["lon"],
-        {k: doc[k] for k in _VARS},
+        data,
         doc.get("source", "cached json"),
         doc.get("license", ""),
         doc.get("scene_id", Path(path).stem),
@@ -263,6 +311,8 @@ def load_netcdf(path: Path) -> MetoceanField:
             times = netCDF4.num2date(tvar[:], tvar.units)
             times = [datetime(t.year, t.month, t.day, t.hour, t.minute, t.second, tzinfo=timezone.utc) for t in times]
             data = {k: np.array(ds.variables[k][:]) for k in _VARS}
+            data.update({k: np.array(ds.variables[k][:]) for k in _OPTIONAL_VARS
+                         if k in ds.variables})
             return _from_arrays(
                 times, np.array(ds.variables["lat"][:]), np.array(ds.variables["lon"][:]),
                 data, getattr(ds, "source", "netcdf"), getattr(ds, "license", ""), Path(path).stem,
@@ -273,9 +323,11 @@ def load_netcdf(path: Path) -> MetoceanField:
 
     ds = xr.open_dataset(path)
     try:
+        data = {k: ds[k].values for k in _VARS}
+        data.update({k: ds[k].values for k in _OPTIONAL_VARS if k in ds})
         return _from_arrays(
             ds["time"].values, ds["lat"].values, ds["lon"].values,
-            {k: ds[k].values for k in _VARS},
+            data,
             ds.attrs.get("source", "netcdf"), ds.attrs.get("license", ""), Path(path).stem,
         )
     finally:
@@ -429,4 +481,5 @@ def save_npz(path: Path, field: MetoceanField) -> None:
         lon=field.lons,
         meta=np.array(meta),
         **{k: field.data[k] for k in _VARS},
+        **{k: field.data[k] for k in _OPTIONAL_VARS if k in field.data},
     )
