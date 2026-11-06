@@ -1,9 +1,9 @@
 """Pydantic v2 request and response models for the API contract."""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from . import config
 
@@ -113,3 +113,80 @@ class JobSummary(BaseModel):
     oil_polygons: int = 0
     suspects: int = 0
     status: str = "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 (M4): kinematic and mass-balance forensics. Contract C in the roadmap.
+#
+# Additive only: nothing above this line changes. Rules baked into the models:
+#   * an unknown value is None, never a guessed number;
+#   * a feature that cannot be computed is listed in `unavailable_features`
+#     with the reason, instead of being filled in or silently left out;
+#   * the score is a prioritisation aid, not a probability of guilt.
+# ---------------------------------------------------------------------------
+STAGE4_CONCLUSION = "Investigative candidates only; not proof of causation or a finding of guilt"
+
+
+class Range3(BaseModel):
+    """A min / nominal / max estimate. All three None means 'not computed'."""
+    min: Optional[float] = None
+    nominal: Optional[float] = None
+    max: Optional[float] = None
+
+    @model_validator(mode="after")
+    def _ordered(self) -> "Range3":
+        vals = [v for v in (self.min, self.nominal, self.max) if v is not None]
+        if any(v < 0 for v in vals):
+            raise ValueError("volume and flow estimates cannot be negative")
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("min must not exceed max")
+        if self.nominal is not None:
+            if self.min is not None and self.nominal < self.min:
+                raise ValueError("nominal must not be below min")
+            if self.max is not None and self.nominal > self.max:
+                raise ValueError("nominal must not exceed max")
+        return self
+
+
+class DarkTargetMatch(BaseModel):
+    """Radar vs AIS discrepancy. Defaults to 'unavailable': without suitable SAR target
+    detection, absence of a detection must never be reported as 'no vessel there'."""
+    status: Literal["unavailable", "detected", "not_detected_in_supported_imagery"] = "unavailable"
+    reason: Optional[str] = "No SAR vessel-target detection is available for this case"
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+
+
+class Stage4Candidate(BaseModel):
+    mmsi: str
+    vessel_name: Optional[str] = None
+    time_overlap_minutes: Optional[float] = None
+    distance_to_origin_km: Optional[float] = None
+    speed_change_knots: Optional[float] = None
+    signals: List[str] = Field(default_factory=list)
+    score: float = Field(default=0.0, ge=0.0, le=1.0)
+    score_explanation: str = "Illustrative ranking only"
+    evidence_quality: Literal["low", "medium", "high"] = "low"
+    h3_cells: List[str] = Field(default_factory=list)
+    dark_target_match: DarkTargetMatch = Field(default_factory=DarkTargetMatch)
+    slick_volume_m3: Range3 = Field(default_factory=Range3)
+    derived_flow_m3_h: Range3 = Field(default_factory=Range3)
+    assumptions: List[str] = Field(default_factory=list)
+    unavailable_features: List[str] = Field(default_factory=list)
+
+
+class Stage4Verdict(BaseModel):
+    """attribution_verdict.json (Contract C)."""
+    incident_id: str
+    case_type: Literal["real_historical", "synthetic_demo", "manual_demo"]
+    stage_status: Literal["implemented", "partial", "inherited", "unavailable"] = "partial"
+    h3_resolution: Optional[int] = Field(default=None, ge=0, le=15)
+    candidates: List[Stage4Candidate] = Field(default_factory=list)
+    conclusion: str = STAGE4_CONCLUSION
+
+    @model_validator(mode="after")
+    def _fixed_conclusion(self) -> "Stage4Verdict":
+        low = self.conclusion.lower()
+        if "not proof" not in low and "not a finding of guilt" not in low:
+            raise ValueError("conclusion must keep the 'not proof / not a finding of guilt' wording")
+        return self
+
