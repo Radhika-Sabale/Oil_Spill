@@ -100,7 +100,7 @@ take it on trust.
 | Orchestration | `pipeline.py` | the ten stages, the trace, the warnings |
 | Detection | `ml/infer.py`, `ml/fallback.py`, `ml/model.py` | tiled inference, dB baseline, checkpoint IO |
 | Geometry | `geo/raster.py`, `geo/geometry.py`, `geo/crs.py`, `geo/tiffio.py` | georeferencing, polygons, local metre frames |
-| Physics | `drift/fields.py`, `drift/advection.py`, `drift/cone.py`, `drift/land.py` | metocean, RK2 ensemble, envelopes, coast flag |
+| Physics | `drift/fields.py`, `drift/advection.py`, `drift/cone.py`, `drift/land.py` | metocean, RK4 backward / RK2 forward ensembles, envelopes, coast flag |
 | Attribution | `ais/ingest.py`, `ais/interpolate.py`, `ais/filter.py`, `ais/score.py` | store, reconstruction, funnel, scoring |
 | Simulation | `ais/synthetic.py` | traffic simulator for uncovered scenes |
 | Sync | `hub.py` | Hugging Face, never on the request path |

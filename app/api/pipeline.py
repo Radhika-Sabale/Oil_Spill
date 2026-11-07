@@ -30,11 +30,14 @@ def run(req: RunRequest) -> Dict[str, Any]:
             top_n=req.top_n,
             render_overlays=req.render_overlays,
             job_id=req.job_id,
+            metocean_profile=req.metocean_profile,
         )
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
     except FileNotFoundError as exc:
         raise HTTPException(404, str(exc)) from exc
+    except core.NorseForcingIntegrationError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.get("/api/jobs/{job_id}/progress")

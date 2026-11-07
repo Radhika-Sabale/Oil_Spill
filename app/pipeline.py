@@ -69,6 +69,95 @@ def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+class NorseForcingIntegrationError(RuntimeError):
+    """The explicitly requested NORSE2019 real-forcing path failed closed."""
+
+
+class NorseForcingCoverageError(NorseForcingIntegrationError):
+    """The explicit NORSE2019 profile cannot cover the requested run."""
+
+
+def _load_forcing(scene_id, lat, lon, t_sat, profile):
+    if profile == "default":
+        return fields_mod.load_for_scene(scene_id, lat, lon, t_sat)
+    if profile != "norse2019":
+        raise ValueError("metocean_profile must be 'default' or 'norse2019'")
+    # This explicit path bypasses load_for_scene(), whose last resort is the
+    # synthetic constant field. The adapter itself is checksum-pinned/fail-closed.
+    from scripts.norse2019_adapter import (
+        EXPECTED_SHA256, ForcingCompatibilityError, load_norse2019_field,
+    )
+
+    try:
+        field = load_norse2019_field()
+    except ForcingCompatibilityError as exc:
+        raise NorseForcingIntegrationError(str(exc)) from exc
+    if not isinstance(field, fields_mod.MetoceanField):
+        raise NorseForcingIntegrationError(
+            "NORSE2019 adapter did not return an M3 MetoceanField")
+    if field.synthetic:
+        raise NorseForcingIntegrationError(
+            "NORSE2019 adapter returned a synthetic field; refusing the run")
+    expected_source_hashes = {
+        "meps": EXPECTED_SHA256["meps_mbr0_pp_20190612T00Z_norse_roi_20190612T0400_20190613T0000.nc"],
+        "norkyst800": EXPECTED_SHA256["norkyst800_zdepths_surface_20190612T0400_20190613T0000.nc"],
+    }
+    if getattr(field, "adapter_metadata", {}).get("source_sha256") != expected_source_hashes:
+        raise NorseForcingIntegrationError(
+            "NORSE2019 adapter metadata does not identify the checksum-pinned real inputs")
+    return field
+
+
+def _require_norse_coverage(field, centroid, ring, t_sat, hindcast_hours, forecast_hours):
+    start = t_sat - timedelta(hours=int(hindcast_hours))
+    end = t_sat + timedelta(hours=int(forecast_hours))
+    if start.timestamp() < float(field.times[0]) or end.timestamp() > float(field.times[-1]):
+        raise NorseForcingCoverageError(
+            "NORSE2019 forcing does not cover the full requested UTC interval "
+            f"({_iso(start)} through {_iso(end)}); available {field.time_range_iso[0]} "
+            f"through {field.time_range_iso[1]}"
+        )
+    points = list(ring or []) or [(float(centroid[0]), float(centroid[1]))]
+    for point_lon, point_lat in points:
+        if not field.covers(float(point_lat), float(point_lon), t_sat):
+            raise NorseForcingCoverageError(
+                "NORSE2019 forcing does not cover the requested slick footprint/centroid"
+            )
+
+
+def _install_norse_strict_sampling(field):
+    """Prevent M3's normal edge clamp from supplying out-of-domain forcing."""
+    if field.adapter_metadata.get("strict_coverage"):
+        return
+    sample = field.sample
+
+    def strict_sample(lat, lon, t):
+        lat_values, lon_values = np.broadcast_arrays(
+            np.atleast_1d(np.asarray(lat, dtype=float)),
+            np.atleast_1d(np.asarray(lon, dtype=float)),
+        )
+        if not all(field.covers(float(la), float(lo), t)
+                   for la, lo in zip(lat_values.ravel(), lon_values.ravel())):
+            raise NorseForcingCoverageError(
+                "NORSE2019 sample left forcing coverage; edge-clamped values are disabled"
+            )
+        return sample(lat, lon, t)
+
+    # Instance-level guard preserves the adapter-produced MetoceanField object
+    # and leaves the shared M3 class and its default clamping behavior unchanged.
+    field.sample = strict_sample
+    field.adapter_metadata["strict_coverage"] = "out-of-domain samples raise; no edge clamping"
+
+
+def _require_run_covered(run, phase):
+    meta = getattr(run, "meta", {}) or {}
+    if meta.get("forcing_coverage_status") != "covered" or meta.get(
+            "forcing_outside_coverage_evaluations", 0):
+        raise NorseForcingCoverageError(
+            f"NORSE2019 {phase} left forcing coverage; refusing clamped edge values"
+        )
+
+
 # ---------------------------------------------------------------------------
 # Step A: detection and characterisation
 # ---------------------------------------------------------------------------
@@ -234,15 +323,30 @@ def run_drift(
     ensemble_n: int,
     scene_id: str,
     trace: Optional[job_store.Trace] = None,
+    metocean_profile: str = "default",
 ) -> Dict[str, Any]:
     """Backward run to the origin zone, then forward run to the threat cone."""
     trace = trace or job_store.Trace()
     clon, clat = float(centroid[0]), float(centroid[1])
+    t_sat = _utc(t_sat)
+    if metocean_profile not in {"default", "norse2019"}:
+        raise ValueError("metocean_profile must be 'default' or 'norse2019'")
+    target_hindcast_hours = min(int(hindcast_hours), config.HINDCAST_RK4_MAX_H)
 
-    trace.start("METOCEAN", "load cached currents, 10 m wind and optional waves")
-    field = fields_mod.load_for_scene(scene_id, clat, clon, t_sat)
+    note = ("load cached currents, 10 m wind and optional waves"
+            if metocean_profile == "default"
+            else "load checksum-verified NORSE2019 currents and 10 m wind")
+    trace.start("METOCEAN", note)
+    field = _load_forcing(scene_id, clat, clon, t_sat, metocean_profile)
+    if metocean_profile == "norse2019":
+        _require_norse_coverage(field, (clon, clat), ring, t_sat,
+                                target_hindcast_hours, forecast_hours)
+        _install_norse_strict_sampling(field)
     covers = field.covers(clat, clon, t_sat)
     described = field.describe()
+    if metocean_profile == "norse2019":
+        described["forcing_profile"] = metocean_profile
+        described["adapter_metadata"] = dict(field.adapter_metadata)
     trace.end("ok" if (covers and not field.synthetic and field.has_currents
                         and field.has_stokes) else "warn",
               covers_scene=bool(covers), **described)
@@ -250,12 +354,13 @@ def run_drift(
     lon0, lat0 = advection.seed_particles(ring, (clon, clat), ensemble_n)
 
     trace.start("HINDCAST", "backward ensemble to the origin zone")
-    target_hindcast_hours = min(int(hindcast_hours), config.HINDCAST_RK4_MAX_H)
     back = advection.advect(
         lon0, lat0, t_sat, target_hindcast_hours, field,
         direction="backward", dt_seconds=config.HINDCAST_RK4_DT_SECONDS,
         integrator="rk4", eddy_diffusivity_m2_s=config.HORIZONTAL_EDDY_DIFFUSIVITY_M2_S,
         seed=config.RANDOM_SEED)
+    if metocean_profile == "norse2019":
+        _require_run_covered(back, "hindcast")
     actual_hindcast_hours = abs((back.times[-1] - back.times[0]).total_seconds()) / 3600.0
     i_origin = advection.pick_origin_index(back, method="minimum_variance")
     origin = cone_mod.origin_zone(back, i_origin, pct=95.0, method="kde_hdr")
@@ -278,6 +383,8 @@ def run_drift(
     trace.start("FORECAST", "forward ensemble from the observation time")
     fwd = advection.advect(lon0, lat0, t_sat, forecast_hours, field,
                            direction="forward", seed=config.RANDOM_SEED + 1)
+    if metocean_profile == "norse2019":
+        _require_run_covered(fwd, "forecast")
     trace.end("ok", hours=forecast_hours,
               end_spread_km=round(float(fwd.spread_km[-1]), 2))
 
@@ -292,7 +399,7 @@ def run_drift(
                label="Estimated time since origin (drift proxy), not lab age")
 
     return {
-        "metocean": field.describe(),
+        "metocean": described,
         "metocean_covers_scene": bool(covers),
         "origin": {
             "lon": round(origin["lon"], 6),
@@ -415,8 +522,11 @@ def run(
     top_n: int = 10,
     render_overlays: bool = True,
     job_id: Optional[str] = None,
+    metocean_profile: str = "default",
 ) -> Dict[str, Any]:
     """A -> B -> C in one call. Writes data/jobs/<job_id>.json and returns it."""
+    if metocean_profile not in {"default", "norse2019"}:
+        raise ValueError("metocean_profile must be 'default' or 'norse2019'")
     hindcast_hours = config.HINDCAST_H if hindcast_hours is None else int(hindcast_hours)
     forecast_hours = config.FORECAST_H if forecast_hours is None else int(forecast_hours)
     search_radius_km = config.SEARCH_RADIUS_KM if search_radius_km is None else float(search_radius_km)
@@ -449,6 +559,7 @@ def run(
             "ensemble_n": ensemble_n,
             "prefer_model": prefer_model,
             "top_n": top_n,
+            "metocean_profile": metocean_profile,
         },
         "scene": det["scene"],
         "detection": {
@@ -510,6 +621,7 @@ def run(
     drift = run_drift(
         primary.ring_lonlat, (primary.centroid_lon, primary.centroid_lat), t_obs,
         hindcast_hours, forecast_hours, ensemble_n, scene.id, trace=trace,
+        metocean_profile=metocean_profile,
     )
 
     attr = run_attribution(

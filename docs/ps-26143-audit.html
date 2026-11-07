@@ -367,10 +367,9 @@
   <div class="cid">b.2</div>
   <div class="body">
     <p class="ctitle">Trace the slick back to origin point and time <span class="chip met">Met</span></p>
-    <p>Backward Lagrangian ensemble, 50 particles, RK2, hourly steps, drift velocity
-    <code>U_current + 0.03·U_wind10</code>. The origin is the first hour where the 90th-percentile
-    ensemble spread exceeds 8 km, clipped to 6-48 h and buffered 2 km, a rule fixed in advance
-    rather than tuned per scene.</p>
+    <p>Backward Lagrangian ensemble, 50 particles, RK4 at 5-minute steps (maximum 18 h), drift velocity
+    <code>U_current + 0.03·U_wind10</code>. The pipeline selects the hourly sample with minimum ensemble
+    variance and displays an approximate 95% KDE region, buffered 2 km. This region is not calibrated.</p>
     <div class="ev"><b>app/drift/</b>, origin zone, ring and hourly envelopes returned per run</div>
   </div>
 </div>

@@ -129,8 +129,8 @@ pipeline is asked to:
 | (a) Age, if feasible | Hours between the estimated origin and the radar pass | `app/pipeline.py` | Labelled a drift proxy, not a weathering age |
 | (a) EO corroboration | Sentinel-2 chip compared against the SAR footprint | `app/eo/corroborate.py` | Optional optical layer, count in the evidence rail |
 | (b) Oceanographic and meteorological data | Cached ERA5 10 m wind and CMEMS surface currents, bilinear in space, linear in time | `app/drift/fields.py` | Field source, resolution and cube time span, printed |
-| (b) Trace to origin point and time | RK2 Lagrangian ensemble run backwards, 50 particles | `app/drift/advection.py` | Backtrack path, release zone with a stated radius |
-| (b) Predict future flow | Same integrator forwards, percentile envelope | `app/drift/cone.py` | Forecast cone, threatened box, coast impact flag |
+| (b) Trace to an estimated origin zone and time | Pipeline runs a 50-particle RK4 backward ensemble at 5-minute steps, capped at 18 hours; origin time is selected at minimum ensemble variance | `app/pipeline.py`, `app/drift/advection.py` | Ensemble-median backtrack and approximate, uncalibrated 95% KDE origin region |
+| (b) Predict future flow | RK2 forward ensemble with the configured time step, summarized by a percentile envelope | `app/pipeline.py`, `app/drift/cone.py` | Forecast cone, threatened box, coast impact flag |
 | (c) Historic AIS reconstruction | MarineCadastre schema into SQLite, resampled to one minute, gaps preserved | `app/ais/ingest.py`, `interpolate.py` | Tracks on the chart, scrubbable on the time axis |
 | (c) Filter irrelevant traffic | Spatio-temporal funnel around the origin zone and window | `app/ais/filter.py` | Funnel counts in the evidence rail |
 | (c) Score proximity, trajectory, behaviour | Five sub-scores, weighted, plus a track confidence multiplier | `app/ais/score.py` | Leaderboard with reason codes |
@@ -177,8 +177,8 @@ SAR chip (VV/VH GeoTIFF)
       v
  METOCEAN cached ERA5 wind + CMEMS currents for this footprint and hour
       v
- HINDCAST RK2 backward ensemble, 50 particles seeded inside the slick
-      |   -> release zone polygon, origin time, zone radius
+ HINDCAST RK4 backward ensemble, 50 particles, 5-minute steps (max 18 h)
+      |   -> minimum-variance time, approximate 95% KDE region
       v
  FORECAST same integrator forwards
       |   -> dispersion cone, threatened box, coast impact
@@ -367,20 +367,24 @@ V = U_current + 0.03 * U_wind10
 being double counted. An optional 15 degree leeway deflection rotates the wind
 term to the right in the northern hemisphere.
 
-Integration is RK2 with a one hour step, in a local azimuthal equidistant frame
-recentred on the ensemble every step. The backward run is the same integrator
-with a negative step, which is what makes the hindcast honest: it is the forward
-physics reversed, not a separate heuristic.
+The normal pipeline integrates the backward ensemble with RK4 at five-minute
+steps (maximum 18 hours) in a local azimuthal equidistant frame. Its forward
+forecast uses the existing RK2 integrator and configured step size. These are
+separate solver paths; the current backward pipeline is not RK2 and the forward
+forecast is not RK4.
 
 Fifty particles are seeded inside the slick polygon by rejection sampling, so
 the initial cloud has the shape of the real slick. Each carries a fixed velocity
 perturbation drawn once (0.1 m/s on current, 1 m/s on wind), which is how you
 get a drift cone rather than a random walk that averages itself away.
 
-**Origin rule, frozen.** Walk the backward run and take the first hour where the
-90 percent ensemble spread radius exceeds 8 km, clipped to 6 to 48 hours. That
-is the point where the physics stops being informative and the case has to be
-handed to AIS. The full track is returned as well, so the path stays visible.
+**Current pipeline origin estimate.** Select the hourly backward sample with
+minimum ensemble spatial variance, then form an approximate 95% KDE highest-
+density region and buffer it by 2 km. The separately reported `spread_km` is the
+90th-percentile distance from the ensemble median; it is not the probability
+level or geometry of that KDE region. The region is not calibrated. The older
+first-spread-threshold selector remains in `pick_origin_index()` for legacy
+callers/tests, but the current pipeline explicitly selects `minimum_variance`.
 
 OpenDrift is not a runtime dependency. It is GPL and heavy, and the demo has to
 install on a laptop in minutes. If it happens to be importable it can be used
@@ -475,7 +479,7 @@ app/
     crs.py           local azimuthal equidistant frames, haversine, bearings
   drift/
     fields.py        cached metocean cubes, bilinear in space, linear in time
-    advection.py     RK2 Lagrangian ensemble, forward and backward
+    advection.py     RK2/RK4 ensemble integrators; pipeline uses RK4 back and RK2 forward
     cone.py          percentile envelopes, origin zone, swept cones
     land.py          coastline raster, coast impact flag
   eo/corroborate.py  Sentinel-2 chip comparison against the SAR footprint
@@ -650,9 +654,10 @@ does not claim.
   console says so next to the number.
 - **Attribution is ranked likelihood, not legal proof.** The leaderboard says
   which vessel is most worth investigating. It does not say who is guilty.
-- **The origin is a zone, never a pin.** It is the 90 percent envelope of a
-  50-particle ensemble at the chosen hour, buffered 2 km, and the radius is
-  printed.
+- **The origin is an estimate, not a verified release position.** The normal
+  pipeline displays an approximate 95% KDE region from the selected ensemble
+  sample, buffered 2 km. The separately displayed spread radius is the 90th-
+  percentile particle distance. Neither is a calibrated probability region.
 - **Metocean is cached, not live, by default.** If a scene has no cached cube
   the console turns the metocean badge red and the run carries a warning that
   clause (b) is not satisfied.

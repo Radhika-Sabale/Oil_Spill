@@ -502,9 +502,10 @@
       L.polygon(ringToLatLng(d.origin_zone.geometry.coordinates[0]), {
         color: MAPC.origin, weight: 2, fillColor: MAPC.origin, fillOpacity: 0.18
       }).bindPopup(
-        "<b>Origin zone</b><br>" +
+        "<b>Estimated origin zone</b><br>" +
         utc(d.origin.t) + "<br>" +
-        "90 percent envelope, spread " + fmt(d.origin.spread_km, 1) + " km<br>" +
+        "Approximate 95% KDE region (not calibrated)<br>" +
+        "90th-percentile ensemble spread radius " + fmt(d.origin.spread_km, 1) + " km<br>" +
         "buffered " + fmt(d.origin.buffer_km, 1) + " km<br>" +
         "area " + fmt(d.origin.area_km2, 1) + " km2"
       ).addTo(layerGroup.origin);
@@ -1109,7 +1110,7 @@
       ["lookalike", "Look-alikes", true, "dash:var(--lookalike)"],
       ["hindcast", "Backtrack", true, "dash:var(--hind)"],
       ["cone_back", "Hindcast cone", true, "var(--hind)"],
-      ["origin", "Release zone", true, "var(--accent)"],
+      ["origin", "Estimated origin zone", true, "var(--accent)"],
       ["forecast", "Forecast track", true, "dash:var(--fore)"],
       ["cone_fwd", "Forecast cone", true, "var(--fore)"],
       ["tracks", "AIS tracks", true, null],

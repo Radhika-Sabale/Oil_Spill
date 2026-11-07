@@ -70,8 +70,10 @@ def _lines(doc: Dict[str, Any]) -> List[str]:
     else:
         out += [
             "Origin estimate: %s, %s at %s" % (origin.get("lat"), origin.get("lon"), origin.get("t")),
-            "Origin zone radius: %s km (90 percent ensemble envelope, buffered %s km)"
-            % (origin.get("spread_km"), origin.get("buffer_km")),
+            "Estimated origin zone: approximate 95 percent KDE region, not a calibrated probability; buffered %s km."
+            % (origin.get("buffer_km")),
+            "90th-percentile ensemble spread radius: %s km"
+            % origin.get("spread_km"),
             "Origin zone area: %s km2" % origin.get("area_km2"),
             "Age since origin: %s hours (drift proxy, not a laboratory age)" % doc.get("age_hours_proxy"),
             "Metocean source: %s" % (drift.get("metocean") or {}).get("source"),

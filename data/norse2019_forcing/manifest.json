@@ -1,0 +1,151 @@
+{
+  "benchmark": "NORSE2019; forcing subset only; no hindcast performed",
+  "requested_utc_interval": [
+    "2019-06-12T04:00:00Z",
+    "2019-06-13T00:00:00Z"
+  ],
+  "wgs84_subset_bbox_with_buffer": {
+    "west": 1.968,
+    "east": 2.901,
+    "south": 59.552,
+    "north": 60.073,
+    "buffer_km": 20
+  },
+  "spatial_selection": "A rectangular native-grid window enclosing the approved WGS84 bbox; data cells outside the bbox are masked. Reported valid-coordinate coverage below.",
+  "files": [
+    {
+      "path": "meps_mbr0_pp_20190612T00Z_norse_roi_20190612T0400_20190613T0000.nc",
+      "size_bytes": 271156,
+      "sha256": "22a41dad2d5af3308bf26b82d5fb833385c3c1ebd7c21ea353ab25cc372d314f",
+      "dimensions": {
+        "time": 21,
+        "y": 29,
+        "x": 27
+      },
+      "variables": [
+        "time",
+        "x",
+        "y",
+        "longitude",
+        "latitude",
+        "x_wind_10m",
+        "y_wind_10m",
+        "eastward_wind_10m",
+        "northward_wind_10m"
+      ],
+      "units": {
+        "time": "seconds since 1970-01-01 00:00:00 UTC",
+        "coordinates": "degrees",
+        "wind_and_current": "m s-1"
+      },
+      "timestamps_utc": [
+        "2019-06-12T04:00:00Z",
+        "2019-06-13T00:00:00Z"
+      ],
+      "timestamp_count": 21,
+      "actual_coordinate_bounds": {
+        "longitude": [
+          1.9684407006991365,
+          2.900549134457627
+        ],
+        "latitude": [
+          59.55229888921471,
+          60.07280570358526
+        ]
+      },
+      "missing_or_nonfinite_in_first_component_within_bbox": 0,
+      "masked_grid_cells_outside_bbox": 297,
+      "array_order": "time, y/Y, x/X; axes ascending",
+      "details": "Source x/y winds retained; true EN winds derived with LCC meridian convergence gamma = sin(63deg)*(lon-15deg). No explicit source fill metadata on wind variables; nonfinite/extreme values counted. Grid values outside bbox are masked as NaN."
+    },
+    {
+      "path": "norkyst800_zdepths_surface_20190612T0400_20190613T0000.nc",
+      "size_bytes": 1474144,
+      "sha256": "8749cedd3db73e512b745757e7695feae7b18813b561115c12730ad1141431f2",
+      "dimensions": {
+        "time": 21,
+        "Y": 90,
+        "X": 93
+      },
+      "variables": [
+        "time",
+        "longitude",
+        "latitude",
+        "u_eastward",
+        "v_northward"
+      ],
+      "units": {
+        "time": "seconds since 1970-01-01 00:00:00 UTC",
+        "coordinates": "degrees",
+        "wind_and_current": "m s-1"
+      },
+      "timestamps_utc": [
+        "2019-06-12T04:00:00Z",
+        "2019-06-13T00:00:00Z"
+      ],
+      "timestamp_count": 21,
+      "actual_coordinate_bounds": {
+        "longitude": [
+          1.9680203303421289,
+          2.9009914264615424
+        ],
+        "latitude": [
+          59.5520886506888,
+          60.072878631618224
+        ]
+      },
+      "missing_or_nonfinite_in_first_component_within_bbox": 0,
+      "masked_grid_cells_outside_bbox": 3613,
+      "array_order": "time, y/Y, x/X; axes ascending",
+      "details": "u_eastward/v_northward are already earth-oriented; depth index 0 = 0.0 m; values >= 1e36 and nonfinite treated as missing; original fill sentinel 1e37 recorded."
+    }
+  ],
+  "excluded": {
+    "wave_stokes_forcing": "Explicitly excluded from first experiment; no substitute used."
+  },
+  "source_changes": "None; only this separate acquisition adapter and its outputs are in the benchmark folder.",
+  "inputs": {
+    "MEPS": {
+      "file": "meps_mbr0_pp_2_5km_20190612T00Z.nc",
+      "archive_size_estimate_bytes": 1551000000,
+      "selected_lead_hours": [
+        4,
+        24
+      ],
+      "native_resolution": "2.5 km; hourly; Lambert conformal grid",
+      "wind_rotation": "east=u*cos(gamma)+v*sin(gamma); north=-u*sin(gamma)+v*cos(gamma)"
+    },
+    "NorKyst800": {
+      "files": [
+        "NorKyst-800m_ZDEPTHS_his.an.2019061200.nc",
+        "NorKyst-800m_ZDEPTHS_his.an.2019061300.nc"
+      ],
+      "archive_size_estimates_bytes": [
+        5189000000,
+        5200000000
+      ],
+      "native_resolution": "800 m; hourly; 16 fixed depths",
+      "surface_depth_index": 0,
+      "depth_levels_m": [
+        0.0,
+        3.0,
+        10.0,
+        15.0,
+        25.0,
+        50.0,
+        75.0,
+        100.0,
+        150.0,
+        200.0,
+        250.0,
+        300.0,
+        500.0,
+        1000.0,
+        2000.0,
+        3000.0
+      ],
+      "coordinates": "curvilinear lon/lat; projected X/Y axes ascending",
+      "current_components": "u_eastward, v_northward already earth-oriented"
+    }
+  }
+}
