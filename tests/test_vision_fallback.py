@@ -33,6 +33,9 @@ def test_scene(tmp_path):
 
 def test_missing_checkpoint_falls_back(monkeypatch, test_scene, tmp_path):
     """1. Missing checkpoint: method becomes 'baseline', flag 'baseline_used', non-empty reason."""
+    if not model_mod.torch_available():
+        pytest.skip("torch not installed; the fallback reason is then 'torch not installed', "
+                    "not 'checkpoint not found'")
     missing_pt = tmp_path / "missing_checkpoint.pt"
     monkeypatch.setattr(config, "CHECKPOINT", missing_pt)
 
