@@ -741,7 +741,8 @@ def run_probe(
     attr = run_attribution(drift["origin_ring"], drift["origin"]["lon"], drift["origin"]["lat"],
                            _utc(drift["origin"]["t"]), lon, lat,
                            radius_km=radius_km, window_h=window_h, top_n=top_n, trace=trace,
-                           zone_radius_km=drift["origin"].get("spread_km"))
+                            zone_radius_km=drift["origin"].get("spread_km"),
+                           incident_id=job_id)
 
     doc = {
         "job_id": job_id,
