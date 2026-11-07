@@ -48,9 +48,9 @@
 
     <rect x="580" y="124" width="180" height="86" fill="#111c2a" stroke="#7fb4ff"/>
     <text x="592" y="146" fill="#ffffff" font-size="13" font-weight="700">4 HINDCAST</text>
-    <text x="592" y="166" fill="#8fa6bf" font-size="11">50 particles, RK2, dt 1 h</text>
+    <text x="592" y="166" fill="#8fa6bf" font-size="11">50 particles, RK4, dt 5 min</text>
     <text x="592" y="181" fill="#8fa6bf" font-size="11">V = U_cur + 0.03 U_wind</text>
-    <text x="592" y="200" fill="#61798f" font-size="10.5">stop when spread &gt; 8 km</text>
+    <text x="592" y="200" fill="#61798f" font-size="10.5">min variance, maximum 18 h</text>
 
     <rect x="392" y="238" width="164" height="86" fill="#111c2a" stroke="#7fb4ff"/>
     <text x="404" y="260" fill="#ffffff" font-size="13" font-weight="700">5 FORECAST</text>

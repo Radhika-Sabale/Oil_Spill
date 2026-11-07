@@ -1,0 +1,2467 @@
+{
+  "benchmark": "NORSE2019 observation-seeded backward hindcast",
+  "created_utc": "2026-11-06T09:53:33.618826+00:00",
+  "scope": "No release-origin position accuracy; no algorithm changes, tuning, CODE forcing, or Stokes drift.",
+  "forcing_profile": "norse2019",
+  "forcing_manifest": "data\\norse2019_forcing\\manifest.json",
+  "run_configuration": {
+    "mineral": {
+      "oil": "mineral",
+      "scene_id": "norse2019-mineral",
+      "t_sat_utc": "2019-06-12T12:17:24Z",
+      "endpoint_mask": "20190612T121724Z_MINERALOIL.tif",
+      "endpoint_mask_sha256": "8326f6b08c27e9300f3b0184937e26ccd7b5b3723e2cde6b3b57dee08112735c",
+      "endpoint_centroid_lonlat": [
+        2.392137138112796,
+        59.812417765062335
+      ],
+      "endpoint_polygon_seed": "convex hull of 1-pixel latest-mask geometry, simplified by 20 m",
+      "hindcast_hours": 7,
+      "forecast_hours": 1,
+      "requested_interval_utc": [
+        "2019-06-12T05:17:24Z",
+        "2019-06-12T13:17:24Z"
+      ],
+      "metocean_profile": "norse2019",
+      "ensemble_n": 50,
+      "integrator_backward": "rk4",
+      "dt_seconds_backward": 300,
+      "integrator_forward": "rk2 (existing pipeline default; excluded from scoring)",
+      "dt_seconds_forward": 3600,
+      "alpha_wind": 0.03,
+      "deflection_deg": 15.0,
+      "current_noise_ms": 0.1,
+      "wind_noise_ms": 1.0,
+      "horizontal_eddy_diffusivity_m2_s": 1.0,
+      "random_seed": 20260920,
+      "stokes_enabled": false,
+      "scoring_forecast": false
+    },
+    "soybean": {
+      "oil": "soybean",
+      "scene_id": "norse2019-soybean",
+      "t_sat_utc": "2019-06-12T12:17:24Z",
+      "endpoint_mask": "20190612T121724Z_SOYAOIL.tif",
+      "endpoint_mask_sha256": "dabfd7ba043e6a6ef74a406cc24f01797118dcd1f0326a27c45631d086112053",
+      "endpoint_centroid_lonlat": [
+        2.4505466818713884,
+        59.829333836710454
+      ],
+      "endpoint_polygon_seed": "convex hull of 1-pixel latest-mask geometry, simplified by 20 m",
+      "hindcast_hours": 6,
+      "forecast_hours": 1,
+      "requested_interval_utc": [
+        "2019-06-12T06:17:24Z",
+        "2019-06-12T13:17:24Z"
+      ],
+      "metocean_profile": "norse2019",
+      "ensemble_n": 50,
+      "integrator_backward": "rk4",
+      "dt_seconds_backward": 300,
+      "integrator_forward": "rk2 (existing pipeline default; excluded from scoring)",
+      "dt_seconds_forward": 3600,
+      "alpha_wind": 0.03,
+      "deflection_deg": 15.0,
+      "current_noise_ms": 0.1,
+      "wind_noise_ms": 1.0,
+      "horizontal_eddy_diffusivity_m2_s": 1.0,
+      "random_seed": 20260920,
+      "stokes_enabled": false,
+      "scoring_forecast": false
+    }
+  },
+  "experiments": {
+    "mineral": {
+      "configuration": {
+        "oil": "mineral",
+        "scene_id": "norse2019-mineral",
+        "t_sat_utc": "2019-06-12T12:17:24Z",
+        "endpoint_mask": "20190612T121724Z_MINERALOIL.tif",
+        "endpoint_mask_sha256": "8326f6b08c27e9300f3b0184937e26ccd7b5b3723e2cde6b3b57dee08112735c",
+        "endpoint_centroid_lonlat": [
+          2.392137138112796,
+          59.812417765062335
+        ],
+        "endpoint_polygon_seed": "convex hull of 1-pixel latest-mask geometry, simplified by 20 m",
+        "hindcast_hours": 7,
+        "forecast_hours": 1,
+        "requested_interval_utc": [
+          "2019-06-12T05:17:24Z",
+          "2019-06-12T13:17:24Z"
+        ],
+        "metocean_profile": "norse2019",
+        "ensemble_n": 50,
+        "integrator_backward": "rk4",
+        "dt_seconds_backward": 300,
+        "integrator_forward": "rk2 (existing pipeline default; excluded from scoring)",
+        "dt_seconds_forward": 3600,
+        "alpha_wind": 0.03,
+        "deflection_deg": 15.0,
+        "current_noise_ms": 0.1,
+        "wind_noise_ms": 1.0,
+        "horizontal_eddy_diffusivity_m2_s": 1.0,
+        "random_seed": 20260920,
+        "stokes_enabled": false,
+        "scoring_forecast": false
+      },
+      "status": "success",
+      "observations_scored": 17,
+      "seed_observation_excluded_from_scoring": "2019-06-12T12:17:24Z",
+      "hindcast_coverage": {
+        "status": "covered",
+        "outside_coverage_evaluations": 0,
+        "requested_interval_utc": [
+          "2019-06-12T05:17:24Z",
+          "2019-06-12T13:17:24Z"
+        ],
+        "forcing_interval_utc": [
+          "2019-06-12T04:00:00+00:00",
+          "2019-06-13T00:00:00+00:00"
+        ],
+        "forcing_source": "NORSE2019 MEPS 10 m winds + NorKyst800 surface currents",
+        "synthetic": false,
+        "live": false,
+        "stokes_available": false,
+        "adapter_metadata": {
+          "adapter": "scripts/norse2019_adapter.py",
+          "source_files": {
+            "meps": "meps_mbr0_pp_20190612T00Z_norse_roi_20190612T0400_20190613T0000.nc",
+            "norkyst800": "norkyst800_zdepths_surface_20190612T0400_20190613T0000.nc"
+          },
+          "source_sha256": {
+            "meps": "22a41dad2d5af3308bf26b82d5fb833385c3c1ebd7c21ea353ab25cc372d314f",
+            "norkyst800": "8749cedd3db73e512b745757e7695feae7b18813b561115c12730ad1141431f2"
+          },
+          "time_units": "seconds since 1970-01-01 00:00:00 UTC",
+          "time_count": 21,
+          "time_start_epoch": 1560312000.0,
+          "time_end_epoch": 1560384000.0,
+          "source_wind_units": "m s-1; already rotated to east/north in prepared MEPS subset",
+          "source_current_units": "m s-1; u_eastward/v_northward already earth-oriented",
+          "source_current_depth_index": 0,
+          "source_current_depth_m": 0.0,
+          "target_grid": "regular latitude/longitude; linear scattered interpolation in local metric coordinates",
+          "grid_step_deg": 0.01,
+          "source_bbox": {
+            "west": 1.968,
+            "east": 2.901,
+            "south": 59.552,
+            "north": 60.073,
+            "buffer_km": 20
+          },
+          "output_bounds_wsen": [
+            2.0,
+            59.56,
+            2.87,
+            60.05
+          ],
+          "output_shape_time_lat_lon": [
+            21,
+            50,
+            88
+          ],
+          "wave_stokes_enabled": false,
+          "synthetic_fallback": false,
+          "strict_coverage": "out-of-domain samples raise; no edge clamping"
+        }
+      },
+      "backward_steps": 85,
+      "hindcast_origin_estimate": {
+        "lon": 2.421083,
+        "lat": 59.804329,
+        "t": "2019-06-12T11:17:24Z",
+        "time_window_start": "2019-06-12T10:17:24Z",
+        "time_window_end": "2019-06-12T12:17:24Z",
+        "time_window_half_width_hours": 1.0,
+        "spread_km": 1.19,
+        "buffer_km": 2.0,
+        "area_km2": 37.812,
+        "percentile": 95.0,
+        "uncertainty_method": "kde_hdr_256_grid_convex_hull_approx",
+        "origin_selection_method": "global_minimum_ensemble_spatial_variance",
+        "variance_m2": 538859.17,
+        "index_hours_back": 1.0
+      },
+      "aggregate": {
+        "centroid_displacement_mean_km": 2.246798453895426,
+        "centroid_displacement_median_km": 2.18993925630886,
+        "centroid_displacement_p90_km": 3.5754331796917542,
+        "hull_mask_iou_mean": 0.02782281878629381,
+        "hull_mask_iou_median": 2.736847113116695e-07,
+        "ensemble_hull_precision_mean": 0.04791404093977213,
+        "ensemble_hull_mask_recall_mean": 0.2952290248413083,
+        "observed_footprint_point_fraction_mean": 0.8482352941176471,
+        "nearest_sample_offset_max_seconds": 136
+      },
+      "forecast": {
+        "status": "completed; excluded from observation scoring",
+        "steps": 2,
+        "coverage_status": "covered",
+        "outside_coverage_evaluations": 0
+      },
+      "masks": [
+        {
+          "name": "20190612T061021Z_MINERALOIL.tif",
+          "sha256": "caf75bf2bbb354d0137f35677115e59092a79ab70d903a6d0d245249ba2c7fcc",
+          "timestamp_utc": "2019-06-12T06:10:21Z",
+          "crs": "EPSG:32631",
+          "width": 8094,
+          "height": 7525,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464894.8596313866,
+            0.0,
+            -1.0,
+            6639595.177489115
+          ],
+          "bounds": [
+            464894.8596313866,
+            6632070.177489115,
+            472988.8596313866,
+            6639595.177489115
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 74349,
+          "observed_centroid_utm_m": [
+            470633.9303855325,
+            6635923.240724668
+          ],
+          "observed_centroid_lonlat": [
+            2.475727457483039,
+            59.859884832952325
+          ]
+        },
+        {
+          "name": "20190612T061844Z_MINERALOIL.tif",
+          "sha256": "0034c615522107b21749065ee64d8046b8a704395dea042585333c5b9e242893",
+          "timestamp_utc": "2019-06-12T06:18:44Z",
+          "crs": "EPSG:32631",
+          "width": 8029,
+          "height": 7595,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465594.1800609308,
+            0.0,
+            -1.0,
+            6638172.038814428
+          ],
+          "bounds": [
+            465594.1800609308,
+            6630577.038814428,
+            473623.1800609308,
+            6638172.038814428
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 119954,
+          "observed_centroid_utm_m": [
+            470595.9010789875,
+            6635762.62548932
+          ],
+          "observed_centroid_lonlat": [
+            2.4750712718082495,
+            59.85843995222375
+          ]
+        },
+        {
+          "name": "20190612T062440Z_MINERALOIL.tif",
+          "sha256": "3d26f82998a0af47d0ee4388312065d4c08b86959f4460842f1b5c5a3cd926d0",
+          "timestamp_utc": "2019-06-12T06:24:40Z",
+          "crs": "EPSG:32631",
+          "width": 8114,
+          "height": 7555,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464750.1595549176,
+            0.0,
+            -1.0,
+            6639515.331720022
+          ],
+          "bounds": [
+            464750.1595549176,
+            6631960.331720022,
+            472864.1595549176,
+            6639515.331720022
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 66632,
+          "observed_centroid_utm_m": [
+            470544.3551816434,
+            6635518.7097516
+          ],
+          "observed_centroid_lonlat": [
+            2.4741856648525244,
+            59.85624614303063
+          ]
+        },
+        {
+          "name": "20190612T063245Z_MINERALOIL.tif",
+          "sha256": "73fe31ce3a37acb5f62d11f29e2077527b85a1c06f7fe488017e3af656cfa9d7",
+          "timestamp_utc": "2019-06-12T06:32:45Z",
+          "crs": "EPSG:32631",
+          "width": 8004,
+          "height": 7555,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            466492.3797265282,
+            0.0,
+            -1.0,
+            6638246.8991026515
+          ],
+          "bounds": [
+            466492.3797265282,
+            6630691.8991026515,
+            474496.3797265282,
+            6638246.8991026515
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 212213,
+          "observed_centroid_utm_m": [
+            470563.77839437616,
+            6635560.09404123
+          ],
+          "observed_centroid_lonlat": [
+            2.474526513751185,
+            59.85661911960697
+          ]
+        },
+        {
+          "name": "20190612T105124Z_MINERALOIL.tif",
+          "sha256": "5fd230b7baf27825c22d9e6c62e0b2fe8a249e7074466e9ae987d30298374c49",
+          "timestamp_utc": "2019-06-12T10:51:24Z",
+          "crs": "EPSG:32631",
+          "width": 8239,
+          "height": 7595,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465843.008804279,
+            0.0,
+            -1.0,
+            6636107.144551011
+          ],
+          "bounds": [
+            465843.008804279,
+            6628512.144551011,
+            474082.008804279,
+            6636107.144551011
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 836810,
+          "observed_centroid_utm_m": [
+            467415.06685927353,
+            6631575.536127356
+          ],
+          "observed_centroid_lonlat": [
+            2.418944940632939,
+            59.82060546013366
+          ]
+        },
+        {
+          "name": "20190612T105807Z_MINERALOIL.tif",
+          "sha256": "d5a05e9ff91c0494251062a76ad01557d552d7a34eac10ff98c6e383d51ff038",
+          "timestamp_utc": "2019-06-12T10:58:07Z",
+          "crs": "EPSG:32631",
+          "width": 8169,
+          "height": 7720,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463553.2763318807,
+            0.0,
+            -1.0,
+            6634529.272495074
+          ],
+          "bounds": [
+            463553.2763318807,
+            6626809.272495074,
+            471722.2763318807,
+            6634529.272495074
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1258521,
+          "observed_centroid_utm_m": [
+            467510.9904268381,
+            6631935.002489649
+          ],
+          "observed_centroid_lonlat": [
+            2.4205993149192624,
+            59.82384066545046
+          ]
+        },
+        {
+          "name": "20190612T110431Z_MINERALOIL.tif",
+          "sha256": "2ac495ed4cc419d984c5487ffc55cab4e0f4fec510ac10f7877361b66619cc2d",
+          "timestamp_utc": "2019-06-12T11:04:31Z",
+          "crs": "EPSG:32631",
+          "width": 8264,
+          "height": 7640,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465473.746026804,
+            0.0,
+            -1.0,
+            6635832.682042429
+          ],
+          "bounds": [
+            465473.746026804,
+            6628192.682042429,
+            473737.746026804,
+            6635832.682042429
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 801660,
+          "observed_centroid_utm_m": [
+            467196.2689068277,
+            6631425.665716306
+          ],
+          "observed_centroid_lonlat": [
+            2.4150671526689966,
+            59.81924248602773
+          ]
+        },
+        {
+          "name": "20190612T111058Z_MINERALOIL.tif",
+          "sha256": "bcf7f678d63c5aaa32522685925811bb3047db7b59b25ade1c0670603cafd9b2",
+          "timestamp_utc": "2019-06-12T11:10:58Z",
+          "crs": "EPSG:32631",
+          "width": 8144,
+          "height": 7715,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463498.3767227274,
+            0.0,
+            -1.0,
+            6634469.396027564
+          ],
+          "bounds": [
+            463498.3767227274,
+            6626754.396027564,
+            471642.3767227274,
+            6634469.396027564
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1126238,
+          "observed_centroid_utm_m": [
+            467305.3812954731,
+            6631804.2420538915
+          ],
+          "observed_centroid_lonlat": [
+            2.4169532684336663,
+            59.82265037133625
+          ]
+        },
+        {
+          "name": "20190612T111733Z_MINERALOIL.tif",
+          "sha256": "a369149200c632cb482da57a8643f091797a4167b86c372ab631c31ec6747e2d",
+          "timestamp_utc": "2019-06-12T11:17:33Z",
+          "crs": "EPSG:32631",
+          "width": 8194,
+          "height": 7570,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464969.7400778554,
+            0.0,
+            -1.0,
+            6636651.061513337
+          ],
+          "bounds": [
+            464969.7400778554,
+            6629081.061513337,
+            473163.7400778554,
+            6636651.061513337
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1488221,
+          "observed_centroid_utm_m": [
+            467390.0107167591,
+            6632152.872867632
+          ],
+          "observed_centroid_lonlat": [
+            2.4184078282918207,
+            59.825787417946145
+          ]
+        },
+        {
+          "name": "20190612T112423Z_MINERALOIL.tif",
+          "sha256": "239eadaeb3555e598ffdecf09eca80abb2019db6bdd8e7d3a4323ee25dc757a7",
+          "timestamp_utc": "2019-06-12T11:24:23Z",
+          "crs": "EPSG:32631",
+          "width": 8149,
+          "height": 7710,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            462869.6452680159,
+            0.0,
+            -1.0,
+            6635118.090250679
+          ],
+          "bounds": [
+            462869.6452680159,
+            6627408.090250679,
+            471018.6452680159,
+            6635118.090250679
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1245730,
+          "observed_centroid_utm_m": [
+            467157.89260893257,
+            6631877.765523812
+          ],
+          "observed_centroid_lonlat": [
+            2.4143116600710877,
+            59.82329886466774
+          ]
+        },
+        {
+          "name": "20190612T113056Z_MINERALOIL.tif",
+          "sha256": "afa65d0ff30ed7a8010b4952d02b23ab1268ed9d9b50eeaa53cfd15946f4cb87",
+          "timestamp_utc": "2019-06-12T11:30:56Z",
+          "crs": "EPSG:32631",
+          "width": 8204,
+          "height": 7605,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464989.7050327443,
+            0.0,
+            -1.0,
+            6636685.97350753
+          ],
+          "bounds": [
+            464989.7050327443,
+            6629080.97350753,
+            473193.7050327443,
+            6636685.97350753
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1660258,
+          "observed_centroid_utm_m": [
+            467276.260812027,
+            6632213.654586616
+          ],
+          "observed_centroid_lonlat": [
+            2.416369699749501,
+            59.826324200417424
+          ]
+        },
+        {
+          "name": "20190612T113804Z_MINERALOIL.tif",
+          "sha256": "b13ca8288bb63e6ff885d2d427af4890702e9cd1222703115596bef4e18b6704",
+          "timestamp_utc": "2019-06-12T11:38:04Z",
+          "crs": "EPSG:32631",
+          "width": 8119,
+          "height": 7645,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465514.3592030463,
+            0.0,
+            -1.0,
+            6637293.787577099
+          ],
+          "bounds": [
+            465514.3592030463,
+            6629648.787577099,
+            473633.3592030463,
+            6637293.787577099
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1339027,
+          "observed_centroid_utm_m": [
+            467306.4876817849,
+            6632464.139398608
+          ],
+          "observed_centroid_lonlat": [
+            2.4168694594452234,
+            59.82857570105908
+          ]
+        },
+        {
+          "name": "20190612T114423Z_MINERALOIL.tif",
+          "sha256": "faf16f53c6986f8ee233199f2d72d5bc1c35dab8126f99c3c33487f0b49aec5e",
+          "timestamp_utc": "2019-06-12T11:44:23Z",
+          "crs": "EPSG:32631",
+          "width": 8204,
+          "height": 7610,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464341.0085905537,
+            0.0,
+            -1.0,
+            6636147.051351842
+          ],
+          "bounds": [
+            464341.0085905537,
+            6628537.051351842,
+            472545.0085905537,
+            6636147.051351842
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1759292,
+          "observed_centroid_utm_m": [
+            467142.8902702294,
+            6632263.0505231
+          ],
+          "observed_centroid_lonlat": [
+            2.4139833814545817,
+            59.82675716055134
+          ]
+        },
+        {
+          "name": "20190612T115049Z_MINERALOIL.tif",
+          "sha256": "258b124fb3933dd0a6b7b256394cb39fa012ef444a694e554229801bb152205f",
+          "timestamp_utc": "2019-06-12T11:50:49Z",
+          "crs": "EPSG:32631",
+          "width": 8124,
+          "height": 7665,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            462969.4418045153,
+            0.0,
+            -1.0,
+            6635173.010860131
+          ],
+          "bounds": [
+            462969.4418045153,
+            6627508.010860131,
+            471093.4418045153,
+            6635173.010860131
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1330958,
+          "observed_centroid_utm_m": [
+            466921.6704405805,
+            6632005.353249598
+          ],
+          "observed_centroid_lonlat": [
+            2.4100790095143636,
+            59.82442566694445
+          ]
+        },
+        {
+          "name": "20190612T115722Z_MINERALOIL.tif",
+          "sha256": "df154afebdead05d392aceec35b66f70e7fab0d4f5f1f2c9e4e996f06a97a168",
+          "timestamp_utc": "2019-06-12T11:57:22Z",
+          "crs": "EPSG:32631",
+          "width": 8149,
+          "height": 7555,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465593.4772494169,
+            0.0,
+            -1.0,
+            6635842.677029403
+          ],
+          "bounds": [
+            465593.4772494169,
+            6628287.677029403,
+            473742.4772494169,
+            6635842.677029403
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 209283,
+          "observed_centroid_utm_m": [
+            466156.755678625,
+            6630663.824091037
+          ],
+          "observed_centroid_lonlat": [
+            2.396656121315901,
+            59.81231821709894
+          ]
+        },
+        {
+          "name": "20190612T120406Z_MINERALOIL.tif",
+          "sha256": "3babd8d015de59b9d545a188e94171121afe51d0fca73f7c47c4da7f182cb897",
+          "timestamp_utc": "2019-06-12T12:04:06Z",
+          "crs": "EPSG:32631",
+          "width": 8059,
+          "height": 7625,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463583.2042650835,
+            0.0,
+            -1.0,
+            6634464.427326498
+          ],
+          "bounds": [
+            463583.2042650835,
+            6626839.427326498,
+            471642.2042650835,
+            6634464.427326498
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 330228,
+          "observed_centroid_utm_m": [
+            466123.7899513366,
+            6630775.969951595
+          ],
+          "observed_centroid_lonlat": [
+            2.39605024357615,
+            59.8133224813685
+          ]
+        },
+        {
+          "name": "20190612T121108Z_MINERALOIL.tif",
+          "sha256": "15fedc4ff19971819af38e98a294efb4a05191a05ac17dcd1d9e832391b2d45c",
+          "timestamp_utc": "2019-06-12T12:11:08Z",
+          "crs": "EPSG:32631",
+          "width": 8219,
+          "height": 7565,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464066.5568458522,
+            0.0,
+            -1.0,
+            6635897.581199038
+          ],
+          "bounds": [
+            464066.5568458522,
+            6628332.581199038,
+            472285.5568458522,
+            6635897.581199038
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 834788,
+          "observed_centroid_utm_m": [
+            466483.34637205524,
+            6631675.6451553935
+          ],
+          "observed_centroid_lonlat": [
+            2.4023154268824953,
+            59.82142994796012
+          ]
+        },
+        {
+          "name": "20190612T121724Z_MINERALOIL.tif",
+          "sha256": "8326f6b08c27e9300f3b0184937e26ccd7b5b3723e2cde6b3b57dee08112735c",
+          "timestamp_utc": "2019-06-12T12:17:24Z",
+          "crs": "EPSG:32631",
+          "width": 8129,
+          "height": 7635,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463418.5364033661,
+            0.0,
+            -1.0,
+            6634359.655840572
+          ],
+          "bounds": [
+            463418.5364033661,
+            6626724.655840572,
+            471547.5364033661,
+            6634359.655840572
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 333771,
+          "observed_centroid_utm_m": [
+            465903.37962671375,
+            6630677.2258376675
+          ],
+          "observed_centroid_lonlat": [
+            2.392137138112796,
+            59.812417765062335
+          ]
+        }
+      ],
+      "per_observation": [
+        {
+          "oil": "mineral",
+          "mask": "20190612T061021Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T06:10:21Z",
+          "nearest_model_time_utc": "2019-06-12T06:12:24Z",
+          "nearest_model_time_offset_seconds": 123.0,
+          "observed_mask_centroid_utm_m": [
+            470633.9303855325,
+            6635923.240724668
+          ],
+          "m3_ensemble_median_utm_m": [
+            473670.28765693965,
+            6633992.793712339
+          ],
+          "centroid_displacement_km": 3.5980676962830014,
+          "m3_spread_radius_90_km": 5.047423329929691,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.32,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 76.90425043863164,
+          "ensemble_hull_in_observed_footprint_km2": 23.26891103159222,
+          "observed_oil_mask_area_km2": 0.074349,
+          "hull_mask_intersection_km2": 0.074349,
+          "hull_precision": 0.003195207541042909,
+          "mask_recall": 1.0,
+          "hull_mask_iou": 0.003195207541042909
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T061844Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T06:18:44Z",
+          "nearest_model_time_utc": "2019-06-12T06:17:24Z",
+          "nearest_model_time_offset_seconds": 80.0,
+          "observed_mask_centroid_utm_m": [
+            470595.9010789875,
+            6635762.62548932
+          ],
+          "m3_ensemble_median_utm_m": [
+            473633.0963494048,
+            6633904.806676482
+          ],
+          "centroid_displacement_km": 3.5603435019642564,
+          "m3_spread_radius_90_km": 4.957385699886375,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.48,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 75.11802316436479,
+          "ensemble_hull_in_observed_footprint_km2": 34.08957054722091,
+          "observed_oil_mask_area_km2": 0.119954,
+          "hull_mask_intersection_km2": 0.119954,
+          "hull_precision": 0.0035187888282088974,
+          "mask_recall": 1.0,
+          "hull_mask_iou": 0.0035187888282088974
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T062440Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T06:24:40Z",
+          "nearest_model_time_utc": "2019-06-12T06:22:24Z",
+          "nearest_model_time_offset_seconds": 136.0,
+          "observed_mask_centroid_utm_m": [
+            470544.3551816434,
+            6635518.7097516
+          ],
+          "m3_ensemble_median_utm_m": [
+            473593.9042602796,
+            6633774.194239057
+          ],
+          "centroid_displacement_km": 3.5132725423053555,
+          "m3_spread_radius_90_km": 4.852745078219362,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.3,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 72.93810745456145,
+          "ensemble_hull_in_observed_footprint_km2": 20.84844561118654,
+          "observed_oil_mask_area_km2": 0.066632,
+          "hull_mask_intersection_km2": 0.066632,
+          "hull_precision": 0.003196017642881137,
+          "mask_recall": 1.0,
+          "hull_mask_iou": 0.003196017642881137
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T063245Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T06:32:45Z",
+          "nearest_model_time_utc": "2019-06-12T06:32:24Z",
+          "nearest_model_time_offset_seconds": 21.0,
+          "observed_mask_centroid_utm_m": [
+            470563.77839437616,
+            6635560.09404123
+          ],
+          "m3_ensemble_median_utm_m": [
+            473575.9009890526,
+            6633518.747364487
+          ],
+          "centroid_displacement_km": 3.638678163840883,
+          "m3_spread_radius_90_km": 4.728755073186549,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.58,
+          "fraction_points_on_oil_among_observed": 0.034482758620689655,
+          "ensemble_hull_area_km2": 69.0974343149297,
+          "ensemble_hull_in_observed_footprint_km2": 36.351432117291225,
+          "observed_oil_mask_area_km2": 0.212213,
+          "hull_mask_intersection_km2": 0.212213,
+          "hull_precision": 0.005837816769234162,
+          "mask_recall": 1.0,
+          "hull_mask_iou": 0.0058378167692341625
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T105124Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T10:51:24Z",
+          "nearest_model_time_utc": "2019-06-12T10:52:24Z",
+          "nearest_model_time_offset_seconds": 60.0,
+          "observed_mask_centroid_utm_m": [
+            467415.06685927353,
+            6631575.536127356
+          ],
+          "m3_ensemble_median_utm_m": [
+            468264.30958191433,
+            6629591.511666239
+          ],
+          "centroid_displacement_km": 2.158139537719363,
+          "m3_spread_radius_90_km": 1.517488443187743,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.96,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 5.790352483733734,
+          "ensemble_hull_in_observed_footprint_km2": 5.629886026224433,
+          "observed_oil_mask_area_km2": 0.83681,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T105807Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T10:58:07Z",
+          "nearest_model_time_utc": "2019-06-12T10:57:24Z",
+          "nearest_model_time_offset_seconds": 43.0,
+          "observed_mask_centroid_utm_m": [
+            467510.9904268381,
+            6631935.002489649
+          ],
+          "m3_ensemble_median_utm_m": [
+            468114.06952508626,
+            6629612.100384192
+          ],
+          "centroid_displacement_km": 2.3999122047027193,
+          "m3_spread_radius_90_km": 1.43423827966466,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 5.30626091532372,
+          "ensemble_hull_in_observed_footprint_km2": 5.306260915323719,
+          "observed_oil_mask_area_km2": 1.258521,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T110431Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:04:31Z",
+          "nearest_model_time_utc": "2019-06-12T11:02:24Z",
+          "nearest_model_time_offset_seconds": 127.0,
+          "observed_mask_centroid_utm_m": [
+            467196.2689068277,
+            6631425.665716306
+          ],
+          "m3_ensemble_median_utm_m": [
+            467964.8067686117,
+            6629639.599142312
+          ],
+          "centroid_displacement_km": 1.9443981721177908,
+          "m3_spread_radius_90_km": 1.3992100516758526,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 4.822361009464814,
+          "ensemble_hull_in_observed_footprint_km2": 4.822361009464814,
+          "observed_oil_mask_area_km2": 0.80166,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T111058Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:10:58Z",
+          "nearest_model_time_utc": "2019-06-12T11:12:24Z",
+          "nearest_model_time_offset_seconds": 86.0,
+          "observed_mask_centroid_utm_m": [
+            467305.3812954731,
+            6631804.2420538915
+          ],
+          "m3_ensemble_median_utm_m": [
+            467652.7217335965,
+            6629731.778785301
+          ],
+          "centroid_displacement_km": 2.101368454034464,
+          "m3_spread_radius_90_km": 1.2754910842202205,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 3.8999988673816137,
+          "ensemble_hull_in_observed_footprint_km2": 3.8999988673816137,
+          "observed_oil_mask_area_km2": 1.126238,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T111733Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:17:33Z",
+          "nearest_model_time_utc": "2019-06-12T11:17:24Z",
+          "nearest_model_time_offset_seconds": 9.0,
+          "observed_mask_centroid_utm_m": [
+            467390.0107167591,
+            6632152.872867632
+          ],
+          "m3_ensemble_median_utm_m": [
+            467519.15970012586,
+            6629761.96168171
+          ],
+          "centroid_displacement_km": 2.3943967421611863,
+          "m3_spread_radius_90_km": 1.1896230381967365,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.96,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 3.546999461596264,
+          "ensemble_hull_in_observed_footprint_km2": 3.3650471258318264,
+          "observed_oil_mask_area_km2": 1.488221,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T112423Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:24:23Z",
+          "nearest_model_time_utc": "2019-06-12T11:22:24Z",
+          "nearest_model_time_offset_seconds": 119.0,
+          "observed_mask_centroid_utm_m": [
+            467157.89260893257,
+            6631877.765523812
+          ],
+          "m3_ensemble_median_utm_m": [
+            467394.9650698763,
+            6629817.650959748
+          ],
+          "centroid_displacement_km": 2.073710531584952,
+          "m3_spread_radius_90_km": 1.0975783931049121,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 3.0984625149539466,
+          "ensemble_hull_in_observed_footprint_km2": 3.0984625149539466,
+          "observed_oil_mask_area_km2": 1.24573,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T113056Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:30:56Z",
+          "nearest_model_time_utc": "2019-06-12T11:32:24Z",
+          "nearest_model_time_offset_seconds": 88.0,
+          "observed_mask_centroid_utm_m": [
+            467276.260812027,
+            6632213.654586616
+          ],
+          "m3_ensemble_median_utm_m": [
+            467088.4871684611,
+            6629950.661874981
+          ],
+          "centroid_displacement_km": 2.2707696831983037,
+          "m3_spread_radius_90_km": 1.0308153077238518,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 2.463075234607419,
+          "ensemble_hull_in_observed_footprint_km2": 2.463075234607419,
+          "observed_oil_mask_area_km2": 1.660258,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T113804Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:38:04Z",
+          "nearest_model_time_utc": "2019-06-12T11:37:24Z",
+          "nearest_model_time_offset_seconds": 40.0,
+          "observed_mask_centroid_utm_m": [
+            467306.4876817849,
+            6632464.139398608
+          ],
+          "m3_ensemble_median_utm_m": [
+            466930.3777386398,
+            6630009.908145125
+          ],
+          "centroid_displacement_km": 2.482883351047117,
+          "m3_spread_radius_90_km": 1.0223867762123962,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.82,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 2.1441544531890266,
+          "ensemble_hull_in_observed_footprint_km2": 1.7537905339121354,
+          "observed_oil_mask_area_km2": 1.339027,
+          "hull_mask_intersection_km2": 0.0,
+          "hull_precision": 0.0,
+          "mask_recall": 0.0,
+          "hull_mask_iou": 0.0
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T114423Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:44:23Z",
+          "nearest_model_time_utc": "2019-06-12T11:42:24Z",
+          "nearest_model_time_offset_seconds": 119.0,
+          "observed_mask_centroid_utm_m": [
+            467142.8902702294,
+            6632263.0505231
+          ],
+          "m3_ensemble_median_utm_m": [
+            466802.7103706784,
+            6630099.693968516
+          ],
+          "centroid_displacement_km": 2.18993925630886,
+          "m3_spread_radius_90_km": 0.9420267003637228,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 1.8864419617938613,
+          "ensemble_hull_in_observed_footprint_km2": 1.8864419617938613,
+          "observed_oil_mask_area_km2": 1.759292,
+          "hull_mask_intersection_km2": 9.977813737751926e-07,
+          "hull_precision": 5.289223808541553e-07,
+          "mask_recall": 5.671493838289451e-07,
+          "hull_mask_iou": 2.736847113116695e-07
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T115049Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:50:49Z",
+          "nearest_model_time_utc": "2019-06-12T11:52:24Z",
+          "nearest_model_time_offset_seconds": 95.0,
+          "observed_mask_centroid_utm_m": [
+            466921.6704405805,
+            6632005.353249598
+          ],
+          "m3_ensemble_median_utm_m": [
+            466507.98960845044,
+            6630239.0658305995
+          ],
+          "centroid_displacement_km": 1.8140846389805516,
+          "m3_spread_radius_90_km": 0.8471881497846546,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.1,
+          "ensemble_hull_area_km2": 1.404173291037431,
+          "ensemble_hull_in_observed_footprint_km2": 1.4041732910374312,
+          "observed_oil_mask_area_km2": 1.330958,
+          "hull_mask_intersection_km2": 0.056892336364161834,
+          "hull_precision": 0.04051660626739926,
+          "mask_recall": 0.0427454032089381,
+          "hull_mask_iou": 0.021242442264119518
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T115722Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:57:22Z",
+          "nearest_model_time_utc": "2019-06-12T11:57:24Z",
+          "nearest_model_time_offset_seconds": 2.0,
+          "observed_mask_centroid_utm_m": [
+            466156.755678625,
+            6630663.824091037
+          ],
+          "m3_ensemble_median_utm_m": [
+            466415.9785237362,
+            6630304.675230868
+          ],
+          "centroid_displacement_km": 0.44292706757203204,
+          "m3_spread_radius_90_km": 0.7908649403787942,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.06,
+          "ensemble_hull_area_km2": 1.1428008163251162,
+          "ensemble_hull_in_observed_footprint_km2": 1.1428008163251162,
+          "observed_oil_mask_area_km2": 0.209283,
+          "hull_mask_intersection_km2": 0.05018003459931094,
+          "hull_precision": 0.04390969439510374,
+          "mask_recall": 0.23977119307020128,
+          "hull_mask_iou": 0.03854358156391211
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T120406Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T12:04:06Z",
+          "nearest_model_time_utc": "2019-06-12T12:02:24Z",
+          "nearest_model_time_offset_seconds": 102.0,
+          "observed_mask_centroid_utm_m": [
+            466123.7899513366,
+            6630775.969951595
+          ],
+          "m3_ensemble_median_utm_m": [
+            466286.309340243,
+            6630395.417818055
+          ],
+          "centroid_displacement_km": 0.41380246267128346,
+          "m3_spread_radius_90_km": 0.7666913484942101,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.16,
+          "ensemble_hull_area_km2": 0.9221697299661074,
+          "ensemble_hull_in_observed_footprint_km2": 0.9221697299661072,
+          "observed_oil_mask_area_km2": 0.330228,
+          "hull_mask_intersection_km2": 0.1227522124741155,
+          "hull_precision": 0.13311238537251385,
+          "mask_recall": 0.3717195770016943,
+          "hull_mask_iou": 0.10866436468197743
+        },
+        {
+          "oil": "mineral",
+          "mask": "20190612T121108Z_MINERALOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T12:11:08Z",
+          "nearest_model_time_utc": "2019-06-12T12:12:24Z",
+          "nearest_model_time_offset_seconds": 76.0,
+          "observed_mask_centroid_utm_m": [
+            466483.34637205524,
+            6631675.6451553935
+          ],
+          "m3_ensemble_median_utm_m": [
+            466010.0390536837,
+            6630574.149471889
+          ],
+          "centroid_displacement_km": 1.1988797097301294,
+          "m3_spread_radius_90_km": 0.6618300865563169,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.58,
+          "ensemble_hull_area_km2": 0.5237164006713326,
+          "ensemble_hull_in_observed_footprint_km2": 0.5237164006713325,
+          "observed_oil_mask_area_km2": 0.834788,
+          "hull_mask_intersection_km2": 0.3044110221465832,
+          "hull_precision": 0.5812516502373615,
+          "mask_recall": 0.3646566818720241,
+          "hull_mask_iou": 0.2887894263909073
+        }
+      ],
+      "plot": "mineral_hindcast_masks.png"
+    },
+    "soybean": {
+      "configuration": {
+        "oil": "soybean",
+        "scene_id": "norse2019-soybean",
+        "t_sat_utc": "2019-06-12T12:17:24Z",
+        "endpoint_mask": "20190612T121724Z_SOYAOIL.tif",
+        "endpoint_mask_sha256": "dabfd7ba043e6a6ef74a406cc24f01797118dcd1f0326a27c45631d086112053",
+        "endpoint_centroid_lonlat": [
+          2.4505466818713884,
+          59.829333836710454
+        ],
+        "endpoint_polygon_seed": "convex hull of 1-pixel latest-mask geometry, simplified by 20 m",
+        "hindcast_hours": 6,
+        "forecast_hours": 1,
+        "requested_interval_utc": [
+          "2019-06-12T06:17:24Z",
+          "2019-06-12T13:17:24Z"
+        ],
+        "metocean_profile": "norse2019",
+        "ensemble_n": 50,
+        "integrator_backward": "rk4",
+        "dt_seconds_backward": 300,
+        "integrator_forward": "rk2 (existing pipeline default; excluded from scoring)",
+        "dt_seconds_forward": 3600,
+        "alpha_wind": 0.03,
+        "deflection_deg": 15.0,
+        "current_noise_ms": 0.1,
+        "wind_noise_ms": 1.0,
+        "horizontal_eddy_diffusivity_m2_s": 1.0,
+        "random_seed": 20260920,
+        "stokes_enabled": false,
+        "scoring_forecast": false
+      },
+      "status": "success",
+      "observations_scored": 14,
+      "seed_observation_excluded_from_scoring": "2019-06-12T12:17:24Z",
+      "hindcast_coverage": {
+        "status": "covered",
+        "outside_coverage_evaluations": 0,
+        "requested_interval_utc": [
+          "2019-06-12T06:17:24Z",
+          "2019-06-12T13:17:24Z"
+        ],
+        "forcing_interval_utc": [
+          "2019-06-12T04:00:00+00:00",
+          "2019-06-13T00:00:00+00:00"
+        ],
+        "forcing_source": "NORSE2019 MEPS 10 m winds + NorKyst800 surface currents",
+        "synthetic": false,
+        "live": false,
+        "stokes_available": false,
+        "adapter_metadata": {
+          "adapter": "scripts/norse2019_adapter.py",
+          "source_files": {
+            "meps": "meps_mbr0_pp_20190612T00Z_norse_roi_20190612T0400_20190613T0000.nc",
+            "norkyst800": "norkyst800_zdepths_surface_20190612T0400_20190613T0000.nc"
+          },
+          "source_sha256": {
+            "meps": "22a41dad2d5af3308bf26b82d5fb833385c3c1ebd7c21ea353ab25cc372d314f",
+            "norkyst800": "8749cedd3db73e512b745757e7695feae7b18813b561115c12730ad1141431f2"
+          },
+          "time_units": "seconds since 1970-01-01 00:00:00 UTC",
+          "time_count": 21,
+          "time_start_epoch": 1560312000.0,
+          "time_end_epoch": 1560384000.0,
+          "source_wind_units": "m s-1; already rotated to east/north in prepared MEPS subset",
+          "source_current_units": "m s-1; u_eastward/v_northward already earth-oriented",
+          "source_current_depth_index": 0,
+          "source_current_depth_m": 0.0,
+          "target_grid": "regular latitude/longitude; linear scattered interpolation in local metric coordinates",
+          "grid_step_deg": 0.01,
+          "source_bbox": {
+            "west": 1.968,
+            "east": 2.901,
+            "south": 59.552,
+            "north": 60.073,
+            "buffer_km": 20
+          },
+          "output_bounds_wsen": [
+            2.0,
+            59.56,
+            2.87,
+            60.05
+          ],
+          "output_shape_time_lat_lon": [
+            21,
+            50,
+            88
+          ],
+          "wave_stokes_enabled": false,
+          "synthetic_fallback": false,
+          "strict_coverage": "out-of-domain samples raise; no edge clamping"
+        }
+      },
+      "backward_steps": 73,
+      "hindcast_origin_estimate": {
+        "lon": 2.477989,
+        "lat": 59.822957,
+        "t": "2019-06-12T11:17:24Z",
+        "time_window_start": "2019-06-12T10:17:24Z",
+        "time_window_end": "2019-06-12T12:17:24Z",
+        "time_window_half_width_hours": 1.0,
+        "spread_km": 1.545,
+        "buffer_km": 2.0,
+        "area_km2": 46.621,
+        "percentile": 95.0,
+        "uncertainty_method": "kde_hdr_256_grid_convex_hull_approx",
+        "origin_selection_method": "global_minimum_ensemble_spatial_variance",
+        "variance_m2": 1093610.57,
+        "index_hours_back": 1.0
+      },
+      "aggregate": {
+        "centroid_displacement_mean_km": 0.9957227558853884,
+        "centroid_displacement_median_km": 0.8044879883935521,
+        "centroid_displacement_p90_km": 1.3594576916143957,
+        "hull_mask_iou_mean": 0.15766575736837168,
+        "hull_mask_iou_median": 0.07760229160511589,
+        "ensemble_hull_precision_mean": 0.19528646290364243,
+        "ensemble_hull_mask_recall_mean": 0.4066097244015143,
+        "observed_footprint_point_fraction_mean": 0.8785714285714287,
+        "nearest_sample_offset_max_seconds": 127
+      },
+      "forecast": {
+        "status": "completed; excluded from observation scoring",
+        "steps": 2,
+        "coverage_status": "covered",
+        "outside_coverage_evaluations": 0
+      },
+      "masks": [
+        {
+          "name": "20190612T063245Z_SOYAOIL.tif",
+          "sha256": "0f47f8a0ff64f077ffa950da70fd5ac2e55f3d48d9f4ec5d4691720d0dce87b8",
+          "timestamp_utc": "2019-06-12T06:32:45Z",
+          "crs": "EPSG:32631",
+          "width": 8004,
+          "height": 7555,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            466492.3797265282,
+            0.0,
+            -1.0,
+            6638246.8991026515
+          ],
+          "bounds": [
+            466492.3797265282,
+            6630691.8991026515,
+            474496.3797265282,
+            6638246.8991026515
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 10159,
+          "observed_centroid_utm_m": [
+            472585.7448707353,
+            6635516.278224613
+          ],
+          "observed_centroid_lonlat": [
+            2.510625338145814,
+            59.85636474164182
+          ]
+        },
+        {
+          "name": "20190612T105124Z_SOYAOIL.tif",
+          "sha256": "9aa7329bdcd2506a85aa97b0f1e7c30c1edea8129d613c216a0f3537a90bb7bc",
+          "timestamp_utc": "2019-06-12T10:51:24Z",
+          "crs": "EPSG:32631",
+          "width": 8239,
+          "height": 7595,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465843.008804279,
+            0.0,
+            -1.0,
+            6636107.144551011
+          ],
+          "bounds": [
+            465843.008804279,
+            6628512.144551011,
+            474082.008804279,
+            6636107.144551011
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 976106,
+          "observed_centroid_utm_m": [
+            470400.9321240825,
+            6632540.074555538
+          ],
+          "observed_centroid_lonlat": [
+            2.472049165453089,
+            59.82949044546429
+          ]
+        },
+        {
+          "name": "20190612T105807Z_SOYAOIL.tif",
+          "sha256": "279197fd518259ea65d0e7bc845362a1b695e947936bcab8d324ed352b89534e",
+          "timestamp_utc": "2019-06-12T10:58:07Z",
+          "crs": "EPSG:32631",
+          "width": 8169,
+          "height": 7720,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463553.2763318807,
+            0.0,
+            -1.0,
+            6634529.272495074
+          ],
+          "bounds": [
+            463553.2763318807,
+            6626809.272495074,
+            471722.2763318807,
+            6634529.272495074
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 903453,
+          "observed_centroid_utm_m": [
+            470170.4308739544,
+            6632302.819201434
+          ],
+          "observed_centroid_lonlat": [
+            2.467971951892465,
+            59.82734355108244
+          ]
+        },
+        {
+          "name": "20190612T110431Z_SOYAOIL.tif",
+          "sha256": "affa403054fd3211152e8c1bcaf92b5f2b1cde4abc0e0699ad1658df018f009d",
+          "timestamp_utc": "2019-06-12T11:04:31Z",
+          "crs": "EPSG:32631",
+          "width": 8264,
+          "height": 7640,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465473.746026804,
+            0.0,
+            -1.0,
+            6635832.682042429
+          ],
+          "bounds": [
+            465473.746026804,
+            6628192.682042429,
+            473737.746026804,
+            6635832.682042429
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1105616,
+          "observed_centroid_utm_m": [
+            470259.42385165446,
+            6632518.714488594
+          ],
+          "observed_centroid_lonlat": [
+            2.469528294659883,
+            59.82928850452093
+          ]
+        },
+        {
+          "name": "20190612T111058Z_SOYAOIL.tif",
+          "sha256": "1b053494b89141b775460a62435567032bf74ba6aa852353d970b539b8555e03",
+          "timestamp_utc": "2019-06-12T11:10:58Z",
+          "crs": "EPSG:32631",
+          "width": 8144,
+          "height": 7715,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463498.3767227274,
+            0.0,
+            -1.0,
+            6634469.396027564
+          ],
+          "bounds": [
+            463498.3767227274,
+            6626754.396027564,
+            471642.3767227274,
+            6634469.396027564
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 920071,
+          "observed_centroid_utm_m": [
+            470054.47220829304,
+            6632347.954793681
+          ],
+          "observed_centroid_lonlat": [
+            2.465897377421993,
+            59.82774045362925
+          ]
+        },
+        {
+          "name": "20190612T111733Z_SOYAOIL.tif",
+          "sha256": "e0e749f9fec337e61c972dd2e50a1f3bed99c8067cadfcc327e27f207c3b9484",
+          "timestamp_utc": "2019-06-12T11:17:33Z",
+          "crs": "EPSG:32631",
+          "width": 8194,
+          "height": 7570,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464969.7400778554,
+            0.0,
+            -1.0,
+            6636651.061513337
+          ],
+          "bounds": [
+            464969.7400778554,
+            6629081.061513337,
+            473163.7400778554,
+            6636651.061513337
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1256742,
+          "observed_centroid_utm_m": [
+            470167.97993933863,
+            6632602.124217534
+          ],
+          "observed_centroid_lonlat": [
+            2.4678853801233718,
+            59.83003086708265
+          ]
+        },
+        {
+          "name": "20190612T112423Z_SOYAOIL.tif",
+          "sha256": "563d07bb90b94d28b4ed50cae5817f3daf0dfab6e0dc6d5ae92dc33ca4c6b20b",
+          "timestamp_utc": "2019-06-12T11:24:23Z",
+          "crs": "EPSG:32631",
+          "width": 8149,
+          "height": 7710,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            462869.6452680159,
+            0.0,
+            -1.0,
+            6635118.090250679
+          ],
+          "bounds": [
+            462869.6452680159,
+            6627408.090250679,
+            471018.6452680159,
+            6635118.090250679
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 927137,
+          "observed_centroid_utm_m": [
+            469901.3932097979,
+            6632402.434448463
+          ],
+          "observed_centroid_lonlat": [
+            2.4631593586591434,
+            59.82821852641424
+          ]
+        },
+        {
+          "name": "20190612T113056Z_SOYAOIL.tif",
+          "sha256": "372b2991cad63e9d7f6fa61552d394b5680bd178411e07c3ba2160cd6e73b76c",
+          "timestamp_utc": "2019-06-12T11:30:56Z",
+          "crs": "EPSG:32631",
+          "width": 8204,
+          "height": 7605,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464989.7050327443,
+            0.0,
+            -1.0,
+            6636685.97350753
+          ],
+          "bounds": [
+            464989.7050327443,
+            6629080.97350753,
+            473193.7050327443,
+            6636685.97350753
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1427609,
+          "observed_centroid_utm_m": [
+            469903.53043346683,
+            6632466.12097613
+          ],
+          "observed_centroid_lonlat": [
+            2.4631882758114645,
+            59.828790529777464
+          ]
+        },
+        {
+          "name": "20190612T113804Z_SOYAOIL.tif",
+          "sha256": "268a27499b8d86224ac93b4bd421b70d8303eece69f7dfed2b5e394f76b89bb0",
+          "timestamp_utc": "2019-06-12T11:38:04Z",
+          "crs": "EPSG:32631",
+          "width": 8119,
+          "height": 7645,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465514.3592030463,
+            0.0,
+            -1.0,
+            6637293.787577099
+          ],
+          "bounds": [
+            465514.3592030463,
+            6629648.787577099,
+            473633.3592030463,
+            6637293.787577099
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1341569,
+          "observed_centroid_utm_m": [
+            469899.7288347982,
+            6632611.67067331
+          ],
+          "observed_centroid_lonlat": [
+            2.4630994415057406,
+            59.830097158838946
+          ]
+        },
+        {
+          "name": "20190612T114423Z_SOYAOIL.tif",
+          "sha256": "bf511f3c831bfc6e6f158fa42d5eaf2c2e085b816f76140e1af1719258354064",
+          "timestamp_utc": "2019-06-12T11:44:23Z",
+          "crs": "EPSG:32631",
+          "width": 8204,
+          "height": 7610,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464341.0085905537,
+            0.0,
+            -1.0,
+            6636147.051351842
+          ],
+          "bounds": [
+            464341.0085905537,
+            6628537.051351842,
+            472545.0085905537,
+            6636147.051351842
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1485999,
+          "observed_centroid_utm_m": [
+            469752.91153362446,
+            6632531.729549138
+          ],
+          "observed_centroid_lonlat": [
+            2.460492393985129,
+            59.82936865344702
+          ]
+        },
+        {
+          "name": "20190612T115049Z_SOYAOIL.tif",
+          "sha256": "90485c0acbe0e4329c3d92389ec901ef2484b5b01c4fe65796612044b787d10b",
+          "timestamp_utc": "2019-06-12T11:50:49Z",
+          "crs": "EPSG:32631",
+          "width": 8124,
+          "height": 7665,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            462969.4418045153,
+            0.0,
+            -1.0,
+            6635173.010860131
+          ],
+          "bounds": [
+            462969.4418045153,
+            6627508.010860131,
+            471093.4418045153,
+            6635173.010860131
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1317759,
+          "observed_centroid_utm_m": [
+            469628.34644527285,
+            6632499.074813023
+          ],
+          "observed_centroid_lonlat": [
+            2.4582754428558724,
+            59.82906631933404
+          ]
+        },
+        {
+          "name": "20190612T115722Z_SOYAOIL.tif",
+          "sha256": "3b02da5a58978eaaa158563bdd904f27ce40fe43bce68595f2520bfc14852ba2",
+          "timestamp_utc": "2019-06-12T11:57:22Z",
+          "crs": "EPSG:32631",
+          "width": 8149,
+          "height": 7555,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            465593.4772494169,
+            0.0,
+            -1.0,
+            6635842.677029403
+          ],
+          "bounds": [
+            465593.4772494169,
+            6628287.677029403,
+            473742.4772494169,
+            6635842.677029403
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1410092,
+          "observed_centroid_utm_m": [
+            469552.5655514567,
+            6632530.808491036
+          ],
+          "observed_centroid_lonlat": [
+            2.456919208078641,
+            59.82934568991709
+          ]
+        },
+        {
+          "name": "20190612T120406Z_SOYAOIL.tif",
+          "sha256": "73dde7d2fc3b6213f9a1b5da99929465528c39721bce366f70e67e36b0da530a",
+          "timestamp_utc": "2019-06-12T12:04:06Z",
+          "crs": "EPSG:32631",
+          "width": 8059,
+          "height": 7625,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463583.2042650835,
+            0.0,
+            -1.0,
+            6634464.427326498
+          ],
+          "bounds": [
+            463583.2042650835,
+            6626839.427326498,
+            471642.2042650835,
+            6634464.427326498
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1406285,
+          "observed_centroid_utm_m": [
+            469429.91716147354,
+            6632511.13239873
+          ],
+          "observed_centroid_lonlat": [
+            2.454734572030274,
+            59.829159973691134
+          ]
+        },
+        {
+          "name": "20190612T121108Z_SOYAOIL.tif",
+          "sha256": "e03056288a4d15e5d95202270f5cdeaa510894d08b9783eef3ef06b7d0064349",
+          "timestamp_utc": "2019-06-12T12:11:08Z",
+          "crs": "EPSG:32631",
+          "width": 8219,
+          "height": 7565,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            464066.5568458522,
+            0.0,
+            -1.0,
+            6635897.581199038
+          ],
+          "bounds": [
+            464066.5568458522,
+            6628332.581199038,
+            472285.5568458522,
+            6635897.581199038
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1574831,
+          "observed_centroid_utm_m": [
+            469375.7072597696,
+            6632604.387731609
+          ],
+          "observed_centroid_lonlat": [
+            2.453753994924367,
+            59.829993313093986
+          ]
+        },
+        {
+          "name": "20190612T121724Z_SOYAOIL.tif",
+          "sha256": "dabfd7ba043e6a6ef74a406cc24f01797118dcd1f0326a27c45631d086112053",
+          "timestamp_utc": "2019-06-12T12:17:24Z",
+          "crs": "EPSG:32631",
+          "width": 8129,
+          "height": 7635,
+          "resolution": [
+            1.0,
+            1.0
+          ],
+          "transform": [
+            1.0,
+            0.0,
+            463418.5364033661,
+            0.0,
+            -1.0,
+            6634359.655840572
+          ],
+          "bounds": [
+            463418.5364033661,
+            6626724.655840572,
+            471547.5364033661,
+            6634359.655840572
+          ],
+          "nodata": null,
+          "valid_data_flags": [
+            "1"
+          ],
+          "oil_pixels": 1366107,
+          "observed_centroid_utm_m": [
+            469195.2888872492,
+            6632532.433374468
+          ],
+          "observed_centroid_lonlat": [
+            2.4505466818713884,
+            59.829333836710454
+          ]
+        }
+      ],
+      "per_observation": [
+        {
+          "oil": "soybean",
+          "mask": "20190612T063245Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T06:32:45Z",
+          "nearest_model_time_utc": "2019-06-12T06:32:24Z",
+          "nearest_model_time_offset_seconds": 21.0,
+          "observed_mask_centroid_utm_m": [
+            472585.7448707353,
+            6635516.278224613
+          ],
+          "m3_ensemble_median_utm_m": [
+            476484.68253496103,
+            6635685.149069943
+          ],
+          "centroid_displacement_km": 3.902593018996595,
+          "m3_spread_radius_90_km": 4.657131280077142,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.16,
+          "fraction_points_on_oil_among_observed": 0.0,
+          "ensemble_hull_area_km2": 65.62061747380312,
+          "ensemble_hull_in_observed_footprint_km2": 19.475710140013764,
+          "observed_oil_mask_area_km2": 0.010159,
+          "hull_mask_intersection_km2": 0.010159,
+          "hull_precision": 0.0005216241116223977,
+          "mask_recall": 1.0,
+          "hull_mask_iou": 0.0005216241116223977
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T105124Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T10:51:24Z",
+          "nearest_model_time_utc": "2019-06-12T10:52:24Z",
+          "nearest_model_time_offset_seconds": 60.0,
+          "observed_mask_centroid_utm_m": [
+            470400.9321240825,
+            6632540.074555538
+          ],
+          "m3_ensemble_median_utm_m": [
+            471400.89028800535,
+            6631582.650685262
+          ],
+          "centroid_displacement_km": 1.3844048529854505,
+          "m3_spread_radius_90_km": 1.8298659613932802,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.04,
+          "ensemble_hull_area_km2": 7.4812945602873935,
+          "ensemble_hull_in_observed_footprint_km2": 7.481294560287395,
+          "observed_oil_mask_area_km2": 0.976106,
+          "hull_mask_intersection_km2": 0.06419340418747965,
+          "hull_precision": 0.008580520880468265,
+          "mask_recall": 0.06576478803273379,
+          "hull_mask_iou": 0.007648256857430969
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T105807Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T10:58:07Z",
+          "nearest_model_time_utc": "2019-06-12T10:57:24Z",
+          "nearest_model_time_offset_seconds": 43.0,
+          "observed_mask_centroid_utm_m": [
+            470170.4308739544,
+            6632302.819201434
+          ],
+          "m3_ensemble_median_utm_m": [
+            471265.73434846423,
+            6631600.28397724
+          ],
+          "centroid_displacement_km": 1.3012476484152677,
+          "m3_spread_radius_90_km": 1.7366820328342296,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.68,
+          "fraction_points_on_oil_among_observed": 0.058823529411764705,
+          "ensemble_hull_area_km2": 6.9210538728249755,
+          "ensemble_hull_in_observed_footprint_km2": 4.749057512247557,
+          "observed_oil_mask_area_km2": 0.903453,
+          "hull_mask_intersection_km2": 0.07694957878397961,
+          "hull_precision": 0.016203126322545242,
+          "mask_recall": 0.08517275252169135,
+          "hull_mask_iou": 0.013801226406143894
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T110431Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:04:31Z",
+          "nearest_model_time_utc": "2019-06-12T11:02:24Z",
+          "nearest_model_time_offset_seconds": 127.0,
+          "observed_mask_centroid_utm_m": [
+            470259.42385165446,
+            6632518.714488594
+          ],
+          "m3_ensemble_median_utm_m": [
+            471107.1794804972,
+            6631603.258194962
+          ],
+          "centroid_displacement_km": 1.247697812687632,
+          "m3_spread_radius_90_km": 1.6576774656768793,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.04,
+          "ensemble_hull_area_km2": 6.356644277315577,
+          "ensemble_hull_in_observed_footprint_km2": 6.356644277315578,
+          "observed_oil_mask_area_km2": 1.105616,
+          "hull_mask_intersection_km2": 0.10531159325206708,
+          "hull_precision": 0.016567167936057666,
+          "mask_recall": 0.09525150979369608,
+          "hull_mask_iou": 0.014314574937866436
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T111058Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:10:58Z",
+          "nearest_model_time_utc": "2019-06-12T11:12:24Z",
+          "nearest_model_time_offset_seconds": 86.0,
+          "observed_mask_centroid_utm_m": [
+            470054.47220829304,
+            6632347.954793681
+          ],
+          "m3_ensemble_median_utm_m": [
+            470858.0943172079,
+            6631749.113078065
+          ],
+          "centroid_displacement_km": 1.0022075105979484,
+          "m3_spread_radius_90_km": 1.631390414591861,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.84,
+          "fraction_points_on_oil_among_observed": 0.047619047619047616,
+          "ensemble_hull_area_km2": 5.497409775111929,
+          "ensemble_hull_in_observed_footprint_km2": 4.642045922547478,
+          "observed_oil_mask_area_km2": 0.920071,
+          "hull_mask_intersection_km2": 0.2315847741278207,
+          "hull_precision": 0.049888514243894164,
+          "mask_recall": 0.25170315565627077,
+          "hull_mask_iou": 0.043444963406977906
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T111733Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:17:33Z",
+          "nearest_model_time_utc": "2019-06-12T11:17:24Z",
+          "nearest_model_time_offset_seconds": 9.0,
+          "observed_mask_centroid_utm_m": [
+            470167.97993933863,
+            6632602.124217534
+          ],
+          "m3_ensemble_median_utm_m": [
+            470728.21437896753,
+            6631809.902834554
+          ],
+          "centroid_displacement_km": 0.9702975559061356,
+          "m3_spread_radius_90_km": 1.5452804721625288,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.04,
+          "ensemble_hull_area_km2": 5.06266141554867,
+          "ensemble_hull_in_observed_footprint_km2": 5.06266141554867,
+          "observed_oil_mask_area_km2": 1.256742,
+          "hull_mask_intersection_km2": 0.31291436264487416,
+          "hull_precision": 0.06180827374389243,
+          "mask_recall": 0.2489885454969072,
+          "hull_mask_iou": 0.05209605143517235
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T112423Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:24:23Z",
+          "nearest_model_time_utc": "2019-06-12T11:22:24Z",
+          "nearest_model_time_offset_seconds": 119.0,
+          "observed_mask_centroid_utm_m": [
+            469901.3932097979,
+            6632402.434448463
+          ],
+          "m3_ensemble_median_utm_m": [
+            470642.22569434583,
+            6631888.351308005
+          ],
+          "centroid_displacement_km": 0.9017284765740663,
+          "m3_spread_radius_90_km": 1.5422351591892072,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 0.62,
+          "fraction_points_on_oil_among_observed": 0.0967741935483871,
+          "ensemble_hull_area_km2": 4.697484319250546,
+          "ensemble_hull_in_observed_footprint_km2": 3.3355852920073077,
+          "observed_oil_mask_area_km2": 0.927137,
+          "hull_mask_intersection_km2": 0.1856925695019252,
+          "hull_precision": 0.05567016078014245,
+          "mask_recall": 0.20028600897378188,
+          "hull_mask_iou": 0.04554604261943312
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T113056Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:30:56Z",
+          "nearest_model_time_utc": "2019-06-12T11:32:24Z",
+          "nearest_model_time_offset_seconds": 88.0,
+          "observed_mask_centroid_utm_m": [
+            469903.53043346683,
+            6632466.12097613
+          ],
+          "m3_ensemble_median_utm_m": [
+            470394.73113244004,
+            6631957.278269701
+          ],
+          "centroid_displacement_km": 0.707247500213038,
+          "m3_spread_radius_90_km": 1.570938658745384,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.08,
+          "ensemble_hull_area_km2": 3.985231051190286,
+          "ensemble_hull_in_observed_footprint_km2": 3.985231051190286,
+          "observed_oil_mask_area_km2": 1.427609,
+          "hull_mask_intersection_km2": 0.5482830679693134,
+          "hull_precision": 0.13757874033565892,
+          "mask_recall": 0.38405688670309124,
+          "hull_mask_iou": 0.11270976367641627
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T113804Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:38:04Z",
+          "nearest_model_time_utc": "2019-06-12T11:37:24Z",
+          "nearest_model_time_offset_seconds": 40.0,
+          "observed_mask_centroid_utm_m": [
+            469899.7288347982,
+            6632611.67067331
+          ],
+          "m3_ensemble_median_utm_m": [
+            470256.23755829467,
+            6632034.512320836
+          ],
+          "centroid_displacement_km": 0.678387966991816,
+          "m3_spread_radius_90_km": 1.5398061450828,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.06,
+          "ensemble_hull_area_km2": 3.4451633276741775,
+          "ensemble_hull_in_observed_footprint_km2": 3.4451633276741775,
+          "observed_oil_mask_area_km2": 1.341569,
+          "hull_mask_intersection_km2": 0.4474201115211005,
+          "hull_precision": 0.1298690566937948,
+          "mask_recall": 0.333505105977479,
+          "hull_mask_iou": 0.10310853177505942
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T114423Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:44:23Z",
+          "nearest_model_time_utc": "2019-06-12T11:42:24Z",
+          "nearest_model_time_offset_seconds": 119.0,
+          "observed_mask_centroid_utm_m": [
+            469752.91153362446,
+            6632531.729549138
+          ],
+          "m3_ensemble_median_utm_m": [
+            470159.0477586234,
+            6632119.990185859
+          ],
+          "centroid_displacement_km": 0.5783389460601175,
+          "m3_spread_radius_90_km": 1.5547806671989493,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.1,
+          "ensemble_hull_area_km2": 3.1210355128774148,
+          "ensemble_hull_in_observed_footprint_km2": 3.1210355128774148,
+          "observed_oil_mask_area_km2": 1.485999,
+          "hull_mask_intersection_km2": 0.5336772539589651,
+          "hull_precision": 0.17099364994631078,
+          "mask_recall": 0.35913702092596644,
+          "hull_mask_iou": 0.13101655956901592
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T115049Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:50:49Z",
+          "nearest_model_time_utc": "2019-06-12T11:52:24Z",
+          "nearest_model_time_offset_seconds": 95.0,
+          "observed_mask_centroid_utm_m": [
+            469628.34644527285,
+            6632499.074813023
+          ],
+          "m3_ensemble_median_utm_m": [
+            469964.41600600263,
+            6632294.560675463
+          ],
+          "centroid_displacement_km": 0.39340663709605167,
+          "m3_spread_radius_90_km": 1.5264011730284592,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.3,
+          "ensemble_hull_area_km2": 2.3355764156998537,
+          "ensemble_hull_in_observed_footprint_km2": 2.3355764156998537,
+          "observed_oil_mask_area_km2": 1.317759,
+          "hull_mask_intersection_km2": 0.8057402106783874,
+          "hull_precision": 0.34498559124940814,
+          "mask_recall": 0.6114473213071491,
+          "hull_mask_iou": 0.2829546170247634
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T115722Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T11:57:22Z",
+          "nearest_model_time_utc": "2019-06-12T11:57:24Z",
+          "nearest_model_time_offset_seconds": 2.0,
+          "observed_mask_centroid_utm_m": [
+            469552.5655514567,
+            6632530.808491036
+          ],
+          "m3_ensemble_median_utm_m": [
+            469883.73913822486,
+            6632394.936865102
+          ],
+          "centroid_displacement_km": 0.3579623490075906,
+          "m3_spread_radius_90_km": 1.5852971037236168,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.34,
+          "ensemble_hull_area_km2": 2.050171927065353,
+          "ensemble_hull_in_observed_footprint_km2": 2.050171927065353,
+          "observed_oil_mask_area_km2": 1.410092,
+          "hull_mask_intersection_km2": 0.8459228564809231,
+          "hull_precision": 0.4126106914807822,
+          "mask_recall": 0.5999061454720139,
+          "hull_mask_iou": 0.3235701974768645
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T120406Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T12:04:06Z",
+          "nearest_model_time_utc": "2019-06-12T12:02:24Z",
+          "nearest_model_time_offset_seconds": 102.0,
+          "observed_mask_centroid_utm_m": [
+            469429.91716147354,
+            6632511.13239873
+          ],
+          "m3_ensemble_median_utm_m": [
+            469795.6395683672,
+            6632510.069520393
+          ],
+          "centroid_displacement_km": 0.3657239513819998,
+          "m3_spread_radius_90_km": 1.6276008578907402,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.4,
+          "ensemble_hull_area_km2": 1.8451817775192487,
+          "ensemble_hull_in_observed_footprint_km2": 1.8451817775192492,
+          "observed_oil_mask_area_km2": 1.406285,
+          "hull_mask_intersection_km2": 0.9476927857010894,
+          "hull_precision": 0.5136040238676176,
+          "mask_recall": 0.6738980972570208,
+          "hull_mask_iou": 0.411365346195788
+        },
+        {
+          "oil": "soybean",
+          "mask": "20190612T121108Z_SOYAOIL.tif",
+          "mask_timestamp_utc": "2019-06-12T12:11:08Z",
+          "nearest_model_time_utc": "2019-06-12T12:12:24Z",
+          "nearest_model_time_offset_seconds": 76.0,
+          "observed_mask_centroid_utm_m": [
+            469375.7072597696,
+            6632604.387731609
+          ],
+          "m3_ensemble_median_utm_m": [
+            469516.1898079246,
+            6632653.664778842
+          ],
+          "centroid_displacement_km": 0.14887435548172837,
+          "m3_spread_radius_90_km": 1.5506689756893937,
+          "ensemble_points": 50,
+          "fraction_points_within_mask_raster_footprint": 1.0,
+          "fraction_points_on_oil_among_observed": 0.76,
+          "ensemble_hull_area_km2": 1.5135662018553167,
+          "ensemble_hull_in_observed_footprint_km2": 1.5135662018553167,
+          "observed_oil_mask_area_km2": 1.574831,
+          "hull_mask_intersection_km2": 1.2337522177400608,
+          "hull_precision": 0.8151293390587988,
+          "mask_recall": 0.7834188035033987,
+          "hull_mask_iou": 0.6652228476646487
+        }
+      ],
+      "plot": "soybean_hindcast_masks.png"
+    }
+  }
+}

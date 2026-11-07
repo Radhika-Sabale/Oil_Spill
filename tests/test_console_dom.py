@@ -173,3 +173,36 @@ def test_the_spread_chart_plots_the_job_document_not_a_re_derivation():
     assert "ringRadiusKm" not in js, "the client-side radius re-derivation is still present"
     # The marker must be placed on the plotted point, not at an arbitrary height.
     assert "pts[Math.round(oh)].r" in js, "the origin marker is not tied to the plotted value"
+
+
+def test_origin_zone_label_matches_pipeline_geometry_and_spread_statistic():
+    """The selected region is a 95% KDE approximation; spread_km is a separate 90% radius."""
+    js = _js()
+    pipeline = (ROOT / "app" / "pipeline.py").read_text(encoding="utf-8")
+    assert 'origin_zone(back, i_origin, pct=95.0, method="kde_hdr")' in pipeline
+    assert "Approximate 95% KDE region (not calibrated)" in js
+    assert "90th-percentile ensemble spread radius" in js
+    assert '"origin", "Estimated origin zone"' in js
+    assert "90 percent envelope, spread " not in js
+
+
+def test_attribution_note_distinguishes_region_mass_from_spread_radius():
+    from app.api.report import _lines
+
+    lines = _lines({
+        "job_id": "job_phase8",
+        "input": {"scene_id": "test", "t_sat": "2019-06-12T12:00:00Z"},
+        "scene": {"title": "Test scene"},
+        "detection": {"metrics": {"detector": "test"}},
+        "drift": {
+            "origin": {"lat": 59.7, "lon": 2.2, "t": "2019-06-12T11:00:00Z",
+                       "spread_km": 3.4, "buffer_km": 2.0, "area_km2": 20.0},
+            "metocean": {"source": "test"},
+        },
+        "attribution": {"suspects": []},
+    })
+    report = "\n".join(lines)
+    assert "approximate 95 percent KDE region" in report
+    assert "not a calibrated probability" in report
+    assert "90th-percentile ensemble spread radius: 3.4 km" in report
+    assert "90 percent ensemble envelope" not in report
