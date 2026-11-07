@@ -8,6 +8,7 @@ nothing found, because a true negative scene is a valid result.
 """
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -15,7 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from . import config, scenes as scenes_mod
-from .ais import filter as ais_filter, ingest as ais_ingest, score as ais_score
+from .ais import filter as ais_filter, ingest as ais_ingest, score as ais_score, stage4 as ais_stage4
 from .drift import advection, cone as cone_mod, fields as fields_mod, land
 from .eo import corroborate as eo_corroborate
 from .geo import geometry, raster as raster_mod
@@ -23,6 +24,7 @@ from .jobs import store as job_store
 from .ml import infer
 from .viz import tiles as viz_tiles
 
+log = logging.getLogger("tidetrace.pipeline")
 
 
 
@@ -350,6 +352,9 @@ def run_attribution(
     top_n: int = 10,
     trace: Optional[job_store.Trace] = None,
     zone_radius_km: Optional[float] = None,
+    slick_area_km2: Optional[float] = None,
+    incident_id: Optional[str] = None,
+    case_type: str = "manual_demo",
 ) -> Dict[str, Any]:
     """Join AIS to the origin zone, filter, score and rank."""
     trace = trace or job_store.Trace()
@@ -388,12 +393,28 @@ def run_attribution(
         sources[key] = sources.get(key, 0) + 1
     funnel["sources_used"] = sources
 
+    # Stage 4 evidence (H3 check, gap reachability, dark-target status, volume and
+    # flow ranges). It only adds fields; a failure here must never lose the ranking.
+    trace.start("STAGE4", "H3 check, reachability, dark-target status, mass-balance range")
+    try:
+        stage4 = ais_stage4.build_stage4(
+            res, suspects, origin_ring, origin_lon, origin_lat, radius_km,
+            slick_area_km2=slick_area_km2, incident_id=incident_id,
+            case_type=case_type, sources_used=sources,
+        )
+        trace.end("ok", candidates=len(stage4["candidates"]), **stage4["stage4_status"])
+    except Exception as exc:                      # noqa: BLE001
+        log.warning("stage 4 failed: %s", exc)
+        stage4 = {"status": "unavailable", "error": "%s: %s" % (type(exc).__name__, exc)}
+        trace.end("error", error=stage4["error"])
+
     return {
         "suspects": [s.to_dict() for s in suspects],
         "funnel": funnel,
         "store": store,
         "sources_used": sources,
         "scoring": ais_score.explain_weights(),
+        "stage4": stage4,
         "trace": trace,
     }
 
@@ -517,6 +538,8 @@ def run(
         _utc(drift["origin"]["t"]), primary.centroid_lon, primary.centroid_lat,
         radius_km=search_radius_km, window_h=origin_window_hours, top_n=top_n, trace=trace,
         zone_radius_km=drift["origin"].get("spread_km"),
+        slick_area_km2=primary.area_km2, incident_id=job_id,
+        case_type="synthetic_demo" if scene.ais_mode == "simulated" else "real_historical",
     )
 
     doc["primary_polygon"] = primary.to_feature()

@@ -1,9 +1,10 @@
 """Pydantic v2 request and response models for the API contract."""
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from . import config
 
@@ -116,77 +117,84 @@ class JobSummary(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Stage 4 (M4): kinematic and mass-balance forensics. Contract C in the roadmap.
-#
-# Additive only: nothing above this line changes. Rules baked into the models:
-#   * an unknown value is None, never a guessed number;
-#   * a feature that cannot be computed is listed in `unavailable_features`
-#     with the reason, instead of being filled in or silently left out;
-#   * the score is a prioritisation aid, not a probability of guilt.
+# Stage 4 (M4): Contract C, candidate attribution. Unknowns stay null.
 # ---------------------------------------------------------------------------
-STAGE4_CONCLUSION = "Investigative candidates only; not proof of causation or a finding of guilt"
 
+class Stage4Range(BaseModel):
+    """A min / nominal / max range. All three are null together, or none are."""
 
-class Range3(BaseModel):
-    """A min / nominal / max estimate. All three None means 'not computed'."""
+    model_config = ConfigDict(extra="forbid")
+
     min: Optional[float] = None
     nominal: Optional[float] = None
     max: Optional[float] = None
 
     @model_validator(mode="after")
-    def _ordered(self) -> "Range3":
-        vals = [v for v in (self.min, self.nominal, self.max) if v is not None]
-        if any(v < 0 for v in vals):
-            raise ValueError("volume and flow estimates cannot be negative")
-        if self.min is not None and self.max is not None and self.min > self.max:
-            raise ValueError("min must not exceed max")
-        if self.nominal is not None:
-            if self.min is not None and self.nominal < self.min:
-                raise ValueError("nominal must not be below min")
-            if self.max is not None and self.nominal > self.max:
-                raise ValueError("nominal must not exceed max")
+    def _ordered(self):
+        vals = [self.min, self.nominal, self.max]
+        present = [v is not None for v in vals]
+        if any(present) and not all(present):
+            raise ValueError("a range must be all null or fully populated")
+        if all(present):
+            if any((not math.isfinite(v)) or v < 0 for v in vals):
+                raise ValueError("range values must be finite and non-negative")
+            if not (self.min <= self.nominal <= self.max):
+                raise ValueError("range must satisfy min <= nominal <= max")
         return self
 
 
-class DarkTargetMatch(BaseModel):
-    """Radar vs AIS discrepancy. Defaults to 'unavailable': without suitable SAR target
-    detection, absence of a detection must never be reported as 'no vessel there'."""
+class Stage4DarkTarget(BaseModel):
+    """Radar dark-target comparison. 'unavailable' is the honest default."""
+
+    model_config = ConfigDict(extra="forbid")
+
     status: Literal["unavailable", "detected", "not_detected_in_supported_imagery"] = "unavailable"
-    reason: Optional[str] = "No SAR vessel-target detection is available for this case"
+    reason: Optional[str] = None
     confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def _explain(self):
+        if self.status == "unavailable" and not self.reason:
+            raise ValueError("an unavailable dark-target status needs a reason")
+        return self
 
 
 class Stage4Candidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     mmsi: str
     vessel_name: Optional[str] = None
-    time_overlap_minutes: Optional[float] = None
-    distance_to_origin_km: Optional[float] = None
+    time_overlap_minutes: Optional[float] = Field(default=None, ge=0.0)
+    distance_to_origin_km: Optional[float] = Field(default=None, ge=0.0)
     speed_change_knots: Optional[float] = None
     signals: List[str] = Field(default_factory=list)
-    score: float = Field(default=0.0, ge=0.0, le=1.0)
-    score_explanation: str = "Illustrative ranking only"
-    evidence_quality: Literal["low", "medium", "high"] = "low"
+    score: float = Field(ge=0.0, le=1.0, description="prioritisation aid, not a probability of guilt")
+    score_explanation: str
+    evidence_quality: Literal["low", "medium", "high"]
     h3_cells: List[str] = Field(default_factory=list)
-    dark_target_match: DarkTargetMatch = Field(default_factory=DarkTargetMatch)
-    slick_volume_m3: Range3 = Field(default_factory=Range3)
-    derived_flow_m3_h: Range3 = Field(default_factory=Range3)
+    dark_target_match: Stage4DarkTarget = Field(default_factory=lambda: Stage4DarkTarget(
+        status="unavailable", reason="not computed"))
+    slick_volume_m3: Stage4Range = Field(default_factory=Stage4Range)
+    derived_flow_m3_h: Stage4Range = Field(default_factory=Stage4Range)
     assumptions: List[str] = Field(default_factory=list)
     unavailable_features: List[str] = Field(default_factory=list)
+    evidence: Dict[str, Any] = Field(default_factory=dict)
 
 
 class Stage4Verdict(BaseModel):
-    """attribution_verdict.json (Contract C)."""
-    incident_id: str
+    incident_id: Optional[str] = None
     case_type: Literal["real_historical", "synthetic_demo", "manual_demo"]
-    stage_status: Literal["implemented", "partial", "inherited", "unavailable"] = "partial"
-    h3_resolution: Optional[int] = Field(default=None, ge=0, le=15)
     candidates: List[Stage4Candidate] = Field(default_factory=list)
-    conclusion: str = STAGE4_CONCLUSION
+    conclusion: str
+    stage4_status: Dict[str, str] = Field(default_factory=dict)
+    h3: Dict[str, Any] = Field(default_factory=dict)
+    slick: Dict[str, Any] = Field(default_factory=dict)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
 
-    @model_validator(mode="after")
-    def _fixed_conclusion(self) -> "Stage4Verdict":
-        low = self.conclusion.lower()
-        if "not proof" not in low and "not a finding of guilt" not in low:
-            raise ValueError("conclusion must keep the 'not proof / not a finding of guilt' wording")
-        return self
-
+    @field_validator("conclusion")
+    @classmethod
+    def _no_guilt_claim(cls, v: str) -> str:
+        low = v.lower()
+        if "not proof" not in low or "finding of guilt" not in low:
+            raise ValueError("conclusion must say the result is not proof and not a finding of guilt")
+        return v
