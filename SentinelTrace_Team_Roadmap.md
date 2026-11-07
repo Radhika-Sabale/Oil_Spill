@@ -145,8 +145,8 @@ STAGE 1 / M2  Calibrate + incidence-angle normalize + wind gate + CA-CFAR pyrami
 STAGE 2 / M1  [VV, VH, Span, Rvv/vh] segmentation + sinuosity feature + vectorization
               |     Output: slick GeoJSON, geometry, model/data provenance
               v
-STAGE 3 / M3  Backward RK4, dt=-300 s, up to 18 h, current + wind + Stokes
-              |     Output: origin time window, 95% KDE uncertainty geometry
+STAGE 3 / M3  Backward RK4, dt=300 s, up to 18 h; current + wind; Stokes if wave inputs exist
+              |     Output: origin time window, approximate 95% KDE region (uncalibrated)
               v
 STAGE 4 / M4  H3 trajectory filter + AIS/radar dark-target comparison
               |     Output: candidate evidence + assumption-bounded volume/flow range
@@ -161,7 +161,7 @@ STAGE 5 / M5  Leaflet console + provenance dossier + SHA-256 verification
 |---|---|---|---|
 | 1. Ingestion and gating | Sentinel-1 GRD, incidence angle, acquisition time, matched wind | Calibrated/normalized scene, 3–12 m/s gate status, CA-CFAR candidate windows, provenance | M2 Ruchira |
 | 2. Polarimetric segmentation | VV/VH plus derived Span and VV/VH ratio | Oil mask, sinuosity feature, GeoJSON polygons, model/dataset metadata | M1 Radhika; M2 reviews georeferencing |
-| 3. Hydrodynamic hindcast | Slick polygon/time, CMEMS currents, ERA5 wind, wave inputs if available | RK4 backward track, selected origin window, 95% KDE uncertainty geometry and forcing provenance | M3 Prem |
+| 3. Hydrodynamic hindcast | Slick polygon/time, available currents/wind, wave inputs if available | RK4 backward track, selected origin window, approximate 95% KDE region (uncalibrated), separate 90th-percentile `spread_km`, forcing provenance | M3 Prem |
 | 4. Kinematic/mass-balance forensics | Origin bounds/time, AIS, supported SAR target observations, slick geometry | H3/trajectory filter, candidate evidence, dark-target status, volume/flow ranges and assumptions | M4 Ruchika |
 | 5. Dashboard/dossier | Stage outputs and provenance contract | Leaflet views, explicit status/caveats, downloadable dossier and verified hash | M5 Akhilesh |
 | Shared API/integration | Versioned stage contracts | One stable request/response path that joins all five stages | M4 Ruchika + M5 Akhilesh |
@@ -173,7 +173,7 @@ These are project targets, not claims that the current repository already implem
 
 - **M2 calibration and screening:** Normalize incidence angle in linear sigma-zero space before converting to dB. Define the expected units and sign for every threshold. Apply the 3–12 m/s wind gate to matched 10 m wind and record the gate result. The proposed 100 m CA-CFAR pyramid uses guard width 4, training width 16 and a provisional -3.5 dB damping threshold; benchmark it on the selected scenes before calling the >95% pixel reduction an achieved result.
 - **M1 polarimetry:** Compute `Span = VV + 2*VH` and `Rvv/vh = VV/VH` from linear power values, not by adding/dividing dB values. Build the model input in the documented `[VV, VH, Span, Rvv/vh]` order. The proposed ResNet-34 U-Net and sinuosity cutoffs are hypotheses to validate against the selected dataset; do not hard-code them as universal labels without held-out evaluation.
-- **M3 hindcast:** Target RK4 with `dt = -300 s` and a maximum 18-hour window. Include `current + alpha*wind + Stokes` only when each forcing field is available and time/space matched. Record the wave variables and units used by the Stokes calculation. Define how the minimum-variance origin time and the 95% KDE region are calculated and tested.
+- **M3 hindcast:** Target RK4 with a 300-second backward step and a maximum 18-hour window. Include `current + alpha*wind + Stokes` only when each forcing field is available and time/space matched. Record the wave variables and units used by Stokes. The current implementation's KDE highest-density region is approximate and uncalibrated; the 90th-percentile `spread_km` is a separate statistic. Define how the minimum-variance origin time and KDE region are calculated and tested.
 - **M4 forensics:** H3 resolution 7 is a planned spatial index, not an accuracy claim. Radar dark-target evidence is only available when the source imagery can resolve and validate a target. Compute slick-volume and flow-rate ranges only with explicit thickness, loiter-time and uncertainty assumptions; the example pump capacities and exoneration thresholds in the architecture notes remain provisional until sourced and tested.
 - **M5 dossier:** The report must preserve source, model, forcing, AIS/radar, assumptions and generated-file hashes. A SHA-256 checksum detects byte changes; it does not establish evidence authenticity. Do not claim PDF/A conformance, ISO/IEC 27037 compliance, causation, guilt or authority to detain without a separately validated process.
 
@@ -405,7 +405,7 @@ File/API object: `origin_corridor.json`
 ```
 
 Rules:
-- A “95% origin ellipse” is only a valid claim if the algorithm actually calculates it and its statistical meaning is documented.
+- Do not call the current convex-hull output a “95% origin ellipse” or calibrated confidence region. It is an approximate 95% KDE highest-density region; its statistical coverage has not been calibrated. `spread_km` is a separate 90th-percentile ensemble radius.
 - Record whether forcing data is real, simulated or missing.
 - If the full backward drift model is not working, use a transparent simplified demonstration and label it accordingly.
 
@@ -530,15 +530,17 @@ Current ownership agreed by the team: **M1 Radhika Sabale, M2 Ruchira, M3 Prem, 
 
 **Owns:** `app/drift/`, Stage 3 interfaces and drift tests.
 
-**Tasks**
-1. Preserve the current solver as a baseline while implementing RK4 backward integration with the target `dt=-300 s` and maximum 18-hour window. The selectable RK4 path is now wired to the pipeline; analytical/step-refinement acceptance remains pending.
-2. Integrate current, windage (`alpha=0.030`), Stokes drift and horizontal eddy diffusion (`K_h=1 m²/s`) only when corresponding data exists; record source, units, coverage and assumptions for each field. The solver uses wave height, peak period and wave-from direction; it converts the direction to propagation direction for the Kenyon Stokes vector.
-3. Obtain/parse wave inputs required by the selected Stokes formulation and verify dimensional consistency. The cache builder requests significant wave height, peak period and wave direction, aligns by timestamp without extrapolation, and persists them in NPZ. **Golden Case result (5 Nov):** wind/current cached; the marine response yielded no usable wave fields, so Stokes is explicitly disabled for that cache. Retry with a supported wave product/date before claiming real Stokes forcing.
-4. Compare RK4 against zero-current/constant-current analytical cases, step refinement and the existing solver on common inputs. M3 tests now cover analytical displacement, backward time, spatially varying flow convergence and diffusion variance.
-5. Select the minimum-spread-variance snapshot at hourly intervals over negative time and return a ±1 hour window. The pipeline uses this rule. It computes a Gaussian KDE 95% HDR on a 256×256 local-metre grid and exports its convex hull; this polygon is explicitly approximate, not a calibrated confidence ellipse. Tests cover deterministic selection and polygon output; statistical calibration remains outside the verified evidence.
-6. Emit time-stamped tracks, origin window, uncertainty geometry and forcing provenance for M4/M5.
+**Current status (7 November 2026):** The backward pipeline actively uses RK4 at 300-second steps, capped at 18 hours; the forward forecast remains RK2. The opt-in NORSE2019 adapter is integrated through the backend pipeline/API and fails closed on missing or invalid real forcing. The latest focused validation recorded **49 passed, 0 failed, 0 skipped**, and `git diff --check` passed. The approved MEPS and NorKyst800 subsets match their manifest SHA-256 checksums and each provide 21 hourly samples from 12 June 2019 04:00 UTC through 13 June 2019 00:00 UTC. These results establish focused backend integration/testing, not full application or browser-to-backend operation.
 
-**Done means:** repeatable solver tests, documented parameter values, origin output matching the agreed contract, and explicit limitation/status fields. Reverse integration is an estimate, not proof of the actual release point.
+**Tasks**
+1. Preserve the existing integrator as a baseline. **Implemented and pipeline-active:** the backward pipeline calls RK4 with `dt=300 s` and an 18-hour maximum; the forecast uses the existing RK2 path. RK4 is implemented, directly tested and selected by the normal `run_drift()` backend path.
+2. Integrate currents, windage (`alpha=0.030`) and horizontal eddy diffusion (`K_h=1 m²/s`) with source, units and coverage recorded. Stokes is included only when usable wave fields are present. The solver expects wave height, peak period and wave-from direction and converts direction to propagation direction for the Kenyon vector.
+3. **Pending for real forcing:** verify Stokes with a suitable wave-enabled product/date. The Golden Case cache had wind/current but no usable wave fields, so Stokes is explicitly disabled there. Unit tests exercise the Kenyon calculation with fixture values and the missing-wave status; this does not demonstrate real wave forcing.
+4. **Focused numerical tests pass:** tests cover an analytical constant-velocity displacement and backward time, step refinement for spatially varying current (900/300/150-second steps), and diffusion variance. A real-case RK4-versus-RK2 comparison and independent operational skill validation remain pending.
+5. The active pipeline selects the hourly sample with minimum ensemble spatial variance and returns a ±1-hour origin window. It builds an approximate 95% KDE highest-density region on a 256×256 local-metre grid and exports its convex hull. This is not a calibrated confidence ellipse. `spread_km` is a separate 90th-percentile ensemble distance from the median; it is not the KDE region's confidence level. Statistical coverage/calibration remains unverified.
+6. The backend returns time-indexed hindcast/forecast information, the estimated origin window/geometry and forcing provenance. Saved NORSE2019 artifacts are precomputed historical comparisons (plots, summary JSON and metrics); they do not include a full raw particle-trajectory dump.
+
+**Done means:** the backend implementation, adapter integration and focused tests are complete; full normal-scene regression, browser-to-backend runtime, independent drifter validation, release-origin accuracy and calibrated uncertainty are still pending. Reverse integration estimates an origin; it does not establish the actual release point.
 
 ### M4 — Kinematic and mass-balance forensics / API (Ruchika)
 
@@ -581,7 +583,7 @@ Current ownership agreed by the team: **M1 Radhika Sabale, M2 Ruchira, M3 Prem, 
 
 The schedule is intentionally milestone-driven. If a task slips, cut stretch scope before delaying integration or the video.
 
-**Schedule note (4 November 2026):** Dates through 3 November are the original plan, not proof of completion. Keep them as historical plan entries. The remaining 4–10 November rows are the re-baselined work; each owner must attach evidence before changing tracker status.
+**Schedule note (7 November 2026):** Dates through 3 November are the original plan, not proof of completion. Keep them as historical plan entries. The remaining 4–10 November rows are the re-baselined work; attach evidence before changing tracker status. M3's current backend and NORSE2019 historical comparison have focused test/report evidence, while the full application path remains unverified. The team's internal demo-video recording target is **end of day 7 November**; this is separate from the competition submission deadline of **10 November 2026**. The 8–9 November window can be used for review, edits and final verification.
 
 ### Phase 1 — Foundation and contracts (19–25 October)
 
@@ -618,8 +620,8 @@ The schedule is intentionally milestone-driven. If a task slips, cut stretch sco
 | **Mon 2 Nov** | Integration day | Fix inference adapter | Fix metadata mismatch | Fix origin schema | Wire analysis endpoint | Wire Analyze button | UI invokes API successfully |
 | **Tue 3 Nov** | Map and evidence | Verify polygon output | Verify CRS/coordinates | Verify corridor layer | Verify candidate explanations | Style layers and legend | Map is understandable without narration |
 | **Wed 4 Nov** | Target and evidence audit | Inspect Kaggle files, labels and checkpoint lineage | Confirm scene product, incidence-angle/wind/CFAR status | Record current solver and RK4/Stokes gap | Freeze Stage 4 schema; list H3/radar/mass-balance inputs | Align stage status and dossier UI contract | Every stage is marked implemented, inherited, partial or unavailable |
-| **Thu 5 Nov** | Integrate the Golden Case | Re-run only with verified dataset lineage | Verify scene/forcing provenance and gate outputs | Compare target solver or clearly report unavailable | Run AIS filter; identify dark-target and pump-rate availability | Replay end-to-end and expose missing-stage states | No inherited output is mislabelled as SentinelTrace target output |
-| **Fri 6 Nov** | **Milestone 3: feature freeze** | Freeze model/data path and document metrics | Freeze calibrated scene inputs and CFAR status | Freeze solver version and uncertainty method/status | Freeze H3/forensic results and assumptions | Freeze API/UI/dossier contracts | Clean-start vertical slice and complete stage-status record |
+| **Thu 5 Nov** | Integrate the Golden Case | Re-run only with verified dataset lineage | Verify scene/forcing provenance and gate outputs | Completed precomputed NORSE2019 historical mask comparison with archived MEPS/NorKyst forcing; Stokes disabled | Run AIS filter; identify dark-target and pump-rate availability | Replay end-to-end and expose missing-stage states | No inherited output is mislabelled as SentinelTrace target output |
+| **Fri 6 Nov** | **Milestone 3: feature freeze** | Freeze model/data path and document metrics | Freeze calibrated scene inputs and CFAR status | Freeze active solver and uncertainty wording; record adapter/API focused-test evidence and remaining runtime-validation gates | Freeze H3/forensic results and assumptions | Freeze API/UI/dossier contracts | Clean-start vertical slice and complete stage-status record |
 
 **Milestone 3 acceptance:** A user can click Analyze Incident, see the supported results, inspect the candidate ranking and download the report. Any unavailable subsystem is visibly labelled; no hidden mock data is represented as live or verified.
 
@@ -627,7 +629,7 @@ The schedule is intentionally milestone-driven. If a task slips, cut stretch sco
 
 | Date | Main goal | M1 Radhika | M2 Ruchira | M3 Prem | M4 Ruchika | M5 Akhilesh | End-of-day evidence |
 |---|---|---|---|---|---|---|---|
-| **Sat 7 Nov** | Code freeze + QA | Confirm model/data claims | Validate scene/gate provenance | Validate forcing and origin caveats | Verify candidate evidence and report fields | Freeze UI/dossier; compile report | Release candidate; unavailable features labelled |
+| **Sat 7 Nov** | Code freeze + QA | Confirm model/data claims | Validate scene/gate provenance | Rehearse forcing provenance and distinguish precomputed NORSE outputs from a live app run; preserve pending-validation caveats | Verify candidate evidence and report fields | Freeze UI/dossier; compile report | Release candidate; unavailable features labelled; internal video recording target EOD 7 Nov |
 | **Sun 8 Nov** | Record video | Explain dataset/model | Explain ingestion and gate | Explain hindcast and uncertainty | Explain candidate evidence and assumptions | Record/edit actual prototype demo | Full-length draft includes honest stage statuses |
 | **Mon 9 Nov** | Final verification | Confirm displayed model lineage | Confirm data sources/licences | Confirm solver/result labels | Recompute report hash and verify output | Clean-start rehearsal; check video link | Final materials ready; no unsupported legal claims |
 | **Tue 10 Nov** | Submission day | Available for urgent fix | Available for urgent fix | Available for urgent fix | Verify API/dossier if needed | Submit video link via dashboard | Submission confirmation saved |
@@ -714,6 +716,8 @@ Evidence:
 
 ### 12.1 Module tests
 
+**M3 verification status (7 November 2026):** The focused command recorded in `data/norse2019_validation/phase9_final_validation.md` passed **49 tests, with 0 failures and 0 skips** across M3 numerics/advection, the NORSE2019 adapter, pipeline/API fail-closed behavior, UI/report wording, and offline-boundary behavior. Adapter tests verify the prepared real forcing checksums and time coverage. This is focused backend integration/validation; it does **not** establish the full normal-scene TestClient regression or browser-to-backend runtime.
+
 | Area | Test | Pass condition |
 |---|---|---|
 | Scene metadata | Load valid GeoTIFF | CRS, bounds, transform and dimensions are returned |
@@ -728,11 +732,12 @@ Evidence:
 | M1 sinuosity | Compare known smooth and irregular polygons | Formula is correct; any cutoff is reported as validated only on held-out data |
 | AIS loader | Parse timestamps and coordinates | UTC and numeric fields are normalised; bad rows are reported |
 | Candidate filter | One ship crosses the corridor/time; another does not | Only the matching track is selected |
-| Drift | Constant-current toy example | Direction and displacement match the analytical expected value within tolerance |
-| M3 RK4 | Compare RK4 against an analytical constant-velocity case and step refinement | Position error is within a stated tolerance and integration direction/time steps are correct |
-| M3 Stokes | Known wave inputs and units | Output units/direction match an independent calculation; absent wave inputs are explicitly unavailable |
-| M3 origin estimate | Known particle ensemble with known minimum variance time | Selected origin window and 95% KDE region are reproducible and statistically described |
-| Drift | Missing forcing data | Module reports missing/simulated forcing instead of fabricating a real result |
+| Drift | Constant-current toy example | Direction and displacement match the analytical expected value within tolerance. **Focused-tested** in `tests/test_advection.py`. |
+| M3 RK4 — focused-tested | Analytical constant-velocity/backward-time case and step refinement for a spatially varying current | Direction/time steps and analytical displacement match tolerance; refinement error decreases. Covered by `tests/test_m3_hindcast.py`; not a real-case RK4-versus-RK2 benchmark. |
+| M3 Stokes — fixture-tested | Kenyon calculation with known wave fixture and missing-wave status | Formula/direction and unavailable status behave as expected. **Real wave forcing remains pending:** current Golden Case cache has no usable waves and Stokes is disabled for it. |
+| M3 origin estimate — focused-tested | Known minimum-variance ensemble time and 95% KDE polygon generation | Selection and approximate region geometry are reproducible. The KDE region is not calibrated; `spread_km` is a distinct 90th-percentile ensemble spread radius. |
+| M3 NORSE adapter and API integration — focused-tested | Exact source checksums, 21 hourly UTC samples, variable mapping, coverage and opt-in API path | Prepared MEPS/NorKyst files match the manifest; missing/altered/insufficient forcing fails closed without synthetic fallback. This does not prove browser or full-app operation. |
+| Drift — fail-closed forcing | Missing forcing data or invalid explicit NORSE profile | Module reports failure instead of fabricating a real result; tests confirm the NORSE path cannot accept synthetic fallback. |
 | Ranking | Known features | Ranking and component scores are deterministic and explainable |
 | M4 H3 | Compare H3 candidate set against direct spatial/time filter | No eligible candidates are silently lost; resolution and boundary handling are recorded |
 | M4 dark targets | Known target/no-target and unsupported-resolution cases | Target status and confidence are explicit; absence of a detection is not called proof of no vessel |
@@ -744,6 +749,8 @@ Evidence:
 | Reproducibility | Run the Golden Case twice | Same inputs and deterministic modules produce the same expected output, or differences are documented |
 
 ### 12.2 End-to-end acceptance test
+
+**M3/full-application status:** The Windows normal-scene TestClient regression remains **not verified** because its prior run stalled in `socketpair()` setup before `/api/run`. Browser-to-backend runtime verification is also pending. The four indexed Sentinel-1 scene TIFFs are absent from this checkout, so the normal scene UI workflow cannot currently be demonstrated here. These are application/test-environment and input-availability gates; they do not negate the focused backend tests above.
 
 A teammate who did not write the code must be able to:
 
@@ -776,13 +783,17 @@ Never use invented ground truth to claim the model correctly identified a real p
 
 The competition allows 3–8 minutes. Aim for about 5 minutes so there is room for a clear live demonstration.
 
+**Recording and M3 demo status:** The team's internal recording target is **end of day 7 November 2026**; the submission deadline remains **10 November 2026**. The normal UI uses the default metocean profile and does not expose the NORSE2019 profile. In this checkout, the four indexed SAR TIFFs are missing and browser-to-backend runtime has not been verified, so do not present a normal UI analysis as verified here. The NORSE2019 figures and metrics can be shown separately as **precomputed historical comparisons** using archived MEPS winds and NorKyst800 currents with Stokes disabled; they are not produced live by the current UI and do not establish independent operational validation.
+
+For M3, explain that the hindcast uses environmental wind/current forcing to estimate earlier slick positions and an origin region. Call the polygon an **approximate 95% KDE highest-density region, not calibrated**; identify `spread_km` separately as the **90th-percentile ensemble spread radius**. Do not describe either as a verified release location or calibrated confidence guarantee.
+
 | Time | What to show | Speaker |
 |---|---|---|
 | 0:00–0:35 | Problem: satellite sees a possible slick, but the slick may drift and nearest-ship matching can mislead | M5 |
 | 0:35–1:10 | Architecture diagram and explain the pipeline in plain language | M2 |
 | 1:10–1:55 | Show source data, model/mask and how pixels become a georeferenced polygon | M1 |
-| 1:55–2:40 | Show drift estimate, environmental inputs and uncertainty/caveats | M3 |
-| 2:40–3:40 | Click Analyze; show map layers and candidate ranking with reasons | M4 + M5 |
+| 1:55–2:40 | Explain the wind/current-driven drift estimate and origin region. If showing NORSE outputs, label them precomputed; distinguish the approximate 95% KDE region from the separate 90th-percentile spread radius and state that neither is calibrated | M3 |
+| 2:40–3:40 | If the app is verified on the demo machine, click Analyze and show the supported layers/ranking; otherwise label any interface capture separately from the precomputed M3 results | M4 + M5 |
 | 3:40–4:20 | Generate PDF and show provenance/assumptions/checksum | M4 |
 | 4:20–5:10 | Innovation, practical value, limitations and future work | M5 + all |
 | 5:10–5:30 | Closing and thanks | M5 |
@@ -808,6 +819,11 @@ The competition allows 3–8 minutes. Aim for about 5 minutes so there is room f
 
 | Risk | Why it matters | Fallback |
 |---|---|---|
+| M3 focused backend tests are mistaken for full application validation | The 49-test focused suite does not verify browser-to-backend operation or the normal scene workflow | Describe M3 as focused-tested; keep the Windows `socketpair()` regression and browser/runtime verification visibly pending |
+| Four indexed Sentinel-1 scene TIFFs are absent from this checkout | The normal UI scene-analysis flow cannot be demonstrated from these inputs | Do not substitute a different scene or call precomputed NORSE artifacts a live run; show them separately as precomputed historical comparison outputs |
+| Current Golden Case cache has no usable wave fields | Stokes forcing is disabled for that cache; a wave formula fixture does not verify real wave-data integration | Keep Stokes marked unavailable for this cache until a suitable wave-enabled product/date is tested |
+| NORSE2019 oil-mask comparison is treated as independent operational validation | It is a precomputed historical comparison, not a live UI run or independent drifter validation | Label it retrospective; keep independent drifter validation and real-time operational validation pending |
+| M3 origin polygon/spread values are described as calibrated confidence | A 95% KDE highest-density region and a 90th-percentile spread radius are different statistics; neither is empirically calibrated | Name the approximate KDE region and `spread_km` separately; make no calibrated probability or release-origin accuracy claim |
 | Training takes too long or results are weak | A model that never runs is no help to the prototype | Use a tested baseline/labelled fixture and report the limitation honestly |
 | Dataset labels, licences, channel units or georeferencing are unclear | Training and reported metrics may not describe the intended sensor/task | Complete the Kaggle audit first; keep the existing Zenodo path separately identified until a decision is recorded |
 | Target algorithms cannot be validated before the deadline | A named algorithm can be mistaken for an implemented or scientifically validated result | Preserve the stage contract and mark the capability as unavailable or illustrative; keep the current baseline visible as inherited |
@@ -834,6 +850,8 @@ Prefer:
 
 - “detects candidate oil-like slicks in the selected scene”
 - “estimates a possible origin corridor under stated environmental assumptions”
+- “shows an approximate 95% KDE highest-density region (not calibrated), with a separate 90th-percentile ensemble spread radius”
+- “NORSE2019 results are precomputed historical comparisons, not a live run from the normal UI”
 - “ranks vessels whose available AIS tracks overlap the estimated corridor/time window”
 - “provides an explainable investigation lead and a structured report”
 - “prototype results are not a legal finding and require expert validation”
@@ -859,15 +877,16 @@ Update this section at the end of every day. Use `Inherited / unverified` for ba
 | JSON contracts and mock case | M4 + M5 | Not started | | |
 | Dataset/licence/label audit | M1 | Not started | | |
 | Scene and georeferencing validation | M2 | Not started | | |
-| Synthetic drift test | M3 | Not started | | |
-| RK4 hindcast path and 300 s / 18 h settings | M3 | Done (automated checks + direct pipeline smoke) | `app/drift/advection.py`, `app/pipeline.py`, `tests/test_m3_hindcast.py` | Full detection-to-report Golden Case run and real-case RK2 benchmark are not completed |
-| Stokes wave input and velocity | M3 | In progress (forcing unavailable) | `app/drift/fields.py`, `scripts/build_metocean_cache.py`, Golden Case metocean cache | Re-fetch a source/date with valid wave height, period and direction; current cache has current/wind only |
-| Eddy diffusion (`K_h=1 m²/s`) | M3 | Done (unit check) | `app/config.py`, `app/drift/advection.py`, `tests/test_m3_hindcast.py` | Validate diffusivity against domain evidence before scientific interpretation |
+| Synthetic/analytical drift tests | M3 | Focused-tested | `tests/test_advection.py`, `tests/test_m3_hindcast.py` | Numerical unit/fixture tests are not real-case operational validation |
+| RK4 backward pipeline (300 s / maximum 18 h) and RK2 forward forecast | M3 | Implemented; focused-tested; backend integration tested | `app/pipeline.py`, `app/drift/advection.py`, `tests/test_m3_hindcast.py`, Phase 9 report | Full normal-scene TestClient regression and browser-to-backend run remain unverified; real-case RK4-versus-RK2 benchmark pending |
+| NORSE2019 forcing adapter and pipeline/API path | M3 | Implemented; focused-tested (covered in the 49-test combined suite) | `scripts/norse2019_adapter.py`, `tests/test_norse2019_adapter.py`, `tests/test_norse2019_pipeline.py`, adapter/validation reports | No full app/browser run; independent drifter validation and release-origin accuracy remain unverified |
+| Stokes wave input and velocity | M3 | Conditional implementation; real forcing not verified | `app/drift/fields.py`, `scripts/build_metocean_cache.py`, `tests/test_m3_hindcast.py`, adapter report | Golden Case cache has no usable waves; obtain and verify a suitable wave-enabled product/date before claiming real Stokes forcing |
+| Eddy diffusion (`K_h=1 m²/s`) | M3 | Implemented; unit-tested | `app/config.py`, `app/drift/advection.py`, `tests/test_m3_hindcast.py` | Domain-specific physical calibration remains unverified |
 | AIS schema and fixture | M4 | Not started | | |
 | Dashboard displays mock case | M5 | Not started | | |
 | Segmentation baseline/inference | M1 | Not started | | |
 | Real or labelled demo scene | M2 | Not started | | |
-| Origin minimum-variance time and 95% KDE region | M3 | Implemented; approximate method documented | `app/drift/advection.py`, `app/drift/cone.py`, `app/pipeline.py`, `tests/test_m3_hindcast.py` | KDE convex hull is not calibrated as a 95% confidence ellipse |
+| Origin minimum-variance time and approximate 95% KDE region | M3 | Implemented; focused-tested; approximate and uncalibrated | `app/drift/advection.py`, `app/drift/cone.py`, `app/pipeline.py`, `tests/test_m3_hindcast.py` | `spread_km` is a separate 90th-percentile radius; no calibrated uncertainty guarantee or release-origin accuracy is established |
 | Candidate filtering/ranking | M4 | Not started | | |
 | PDF + SHA-256 | M4 | Not started | | |
 | End-to-end test | All | Not started | | |

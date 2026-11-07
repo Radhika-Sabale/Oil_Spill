@@ -56,13 +56,17 @@ def drift(req: DriftRequest) -> Dict[str, Any]:
     if not t_sat:
         raise HTTPException(400, "t_sat is required when job_id is not given")
 
-    out = pipeline.run_drift(
-        ring, centroid, pipeline._utc(t_sat),
-        hindcast_hours=int(req.hours_back),
-        forecast_hours=int(req.hours_fwd),
-        ensemble_n=int(req.ensemble_n),
-        scene_id=scene_id,
-    )
+    try:
+        out = pipeline.run_drift(
+            ring, centroid, pipeline._utc(t_sat),
+            hindcast_hours=int(req.hours_back),
+            forecast_hours=int(req.hours_fwd),
+            ensemble_n=int(req.ensemble_n),
+            scene_id=scene_id,
+            metocean_profile=req.metocean_profile,
+        )
+    except pipeline.NorseForcingIntegrationError as exc:
+        raise HTTPException(422, str(exc)) from exc
     trace = out.pop("trace")
     out.pop("_runs", None)
     out["trace"] = trace.to_list()

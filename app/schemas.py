@@ -63,6 +63,7 @@ class DriftRequest(BaseModel):
     hours_fwd: int = config.FORECAST_H
     ensemble_n: int = config.ENSEMBLE_N
     scene_id: Optional[str] = None
+    metocean_profile: Literal["default", "norse2019"] = "default"
 
 
 class AttributeRequest(BaseModel):
@@ -88,6 +89,7 @@ class RunRequest(BaseModel):
     threshold_db: Optional[float] = None
     top_n: int = 10
     render_overlays: bool = True
+    metocean_profile: Literal["default", "norse2019"] = "default"
     # The caller may name the run so it can poll progress while the synchronous
     # request is still open. Constrained because it becomes a filename.
     job_id: Optional[str] = Field(default=None, pattern=r"^job_[A-Za-z0-9_-]{1,48}$")
