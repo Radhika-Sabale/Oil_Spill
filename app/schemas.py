@@ -1,9 +1,10 @@
 """Pydantic v2 request and response models for the API contract."""
 from __future__ import annotations
 
+import math
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from . import config
 
@@ -115,3 +116,87 @@ class JobSummary(BaseModel):
     oil_polygons: int = 0
     suspects: int = 0
     status: str = "unknown"
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 (M4): Contract C, candidate attribution. Unknowns stay null.
+# ---------------------------------------------------------------------------
+
+class Stage4Range(BaseModel):
+    """A min / nominal / max range. All three are null together, or none are."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min: Optional[float] = None
+    nominal: Optional[float] = None
+    max: Optional[float] = None
+
+    @model_validator(mode="after")
+    def _ordered(self):
+        vals = [self.min, self.nominal, self.max]
+        present = [v is not None for v in vals]
+        if any(present) and not all(present):
+            raise ValueError("a range must be all null or fully populated")
+        if all(present):
+            if any((not math.isfinite(v)) or v < 0 for v in vals):
+                raise ValueError("range values must be finite and non-negative")
+            if not (self.min <= self.nominal <= self.max):
+                raise ValueError("range must satisfy min <= nominal <= max")
+        return self
+
+
+class Stage4DarkTarget(BaseModel):
+    """Radar dark-target comparison. 'unavailable' is the honest default."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: Literal["unavailable", "detected", "not_detected_in_supported_imagery"] = "unavailable"
+    reason: Optional[str] = None
+    confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+
+    @model_validator(mode="after")
+    def _explain(self):
+        if self.status == "unavailable" and not self.reason:
+            raise ValueError("an unavailable dark-target status needs a reason")
+        return self
+
+
+class Stage4Candidate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    mmsi: str
+    vessel_name: Optional[str] = None
+    time_overlap_minutes: Optional[float] = Field(default=None, ge=0.0)
+    distance_to_origin_km: Optional[float] = Field(default=None, ge=0.0)
+    speed_change_knots: Optional[float] = None
+    signals: List[str] = Field(default_factory=list)
+    score: float = Field(ge=0.0, le=1.0, description="prioritisation aid, not a probability of guilt")
+    score_explanation: str
+    evidence_quality: Literal["low", "medium", "high"]
+    h3_cells: List[str] = Field(default_factory=list)
+    dark_target_match: Stage4DarkTarget = Field(default_factory=lambda: Stage4DarkTarget(
+        status="unavailable", reason="not computed"))
+    slick_volume_m3: Stage4Range = Field(default_factory=Stage4Range)
+    derived_flow_m3_h: Stage4Range = Field(default_factory=Stage4Range)
+    assumptions: List[str] = Field(default_factory=list)
+    unavailable_features: List[str] = Field(default_factory=list)
+    evidence: Dict[str, Any] = Field(default_factory=dict)
+
+
+class Stage4Verdict(BaseModel):
+    incident_id: Optional[str] = None
+    case_type: Literal["real_historical", "synthetic_demo", "manual_demo"]
+    candidates: List[Stage4Candidate] = Field(default_factory=list)
+    conclusion: str
+    stage4_status: Dict[str, str] = Field(default_factory=dict)
+    h3: Dict[str, Any] = Field(default_factory=dict)
+    slick: Dict[str, Any] = Field(default_factory=dict)
+    parameters: Dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("conclusion")
+    @classmethod
+    def _no_guilt_claim(cls, v: str) -> str:
+        low = v.lower()
+        if "not proof" not in low or "finding of guilt" not in low:
+            raise ValueError("conclusion must say the result is not proof and not a finding of guilt")
+        return v

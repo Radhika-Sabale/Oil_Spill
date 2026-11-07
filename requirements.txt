@@ -21,6 +21,10 @@ numpy>=1.26
 scipy>=1.11
 pyproj>=3.6
 rasterio>=1.3
+# h3      : Stage 4 spatial index (res 7). Optional: Stage 4 reports h3 unavailable without it.
+# reportlab: the PDF attribution note and its SHA-256 seal.
+h3>=4.0
+reportlab>=4.0
 
 # ---------------- OPTIONAL ----------------
 # shapely : not required; the geometry this product needs is implemented in

@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from . import config
 from .api import ais as ais_routes, detect as detect_routes, drift as drift_routes
 from .api import health as health_routes, pipeline as pipeline_routes, report as report_routes
+from .api import stage4 as stage4_routes
 
 log = logging.getLogger("tidetrace")
 
@@ -91,6 +92,7 @@ app.include_router(drift_routes.router)
 app.include_router(ais_routes.router)
 app.include_router(pipeline_routes.router)
 app.include_router(report_routes.router)
+app.include_router(stage4_routes.router)
 
 Path(config.STATIC_DIR).mkdir(parents=True, exist_ok=True)
 app.mount("/data", StaticFiles(directory=str(config.DATA_DIR)), name="data")
