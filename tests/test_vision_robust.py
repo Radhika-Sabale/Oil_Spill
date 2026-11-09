@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from app import config, scenes as scenes_mod
+from app import scenes as scenes_mod
 from app.geo import raster as raster_mod, tiffio
 from app.vision.predict import predict_scene
 from app.vision.schema import ContractADocument
@@ -126,19 +126,40 @@ def test_missing_scene_file_raises():
         predict_scene("completely_fictional_scene_id_999")
 
 
+def test_scene_record_with_missing_raster_fails_with_path(tmp_path):
+    """A registered scene record cannot be processed without its mandatory TIFF."""
+    missing_path = tmp_path / "missing_registered_scene.tif"
+    scene = scenes_mod.Scene(
+        id="missing_registered_scene",
+        title="Missing input fixture",
+        sar_path=str(missing_path),
+        t_sat="2024-02-14T06:00:00Z",
+        bounds=[0.0, 0.0, 1.0, 1.0],
+        centroid=[0.5, 0.5],
+        crs="EPSG:4326",
+    )
+    with pytest.raises(OSError, match="missing_registered_scene.tif"):
+        predict_scene(scene, prefer_model=False)
+
+
+@pytest.mark.synthetic_data
 def test_scene_id_string_resolution(selftest_scene):
-    """Resolving scene by string id or path works identically to passing Scene object."""
-    # Test 1: By string path
+    """Resolving a generated raster by path returns the same scene contract."""
     res1 = predict_scene(str(selftest_scene.sar_path), prefer_model=False)
     doc1 = to_contract_a(res1)
     assert doc1["incident_id"] == selftest_scene.id
 
-    # Test 2: By scene id string from real scenes if available
-    real_sar = config.SAR_DIR / "arabian_sea_mumbai_offshore.tif"
-    if real_sar.exists():
-        res2 = predict_scene("arabian_sea_mumbai_offshore", prefer_model=False)
-        doc2 = to_contract_a(res2)
-        assert doc2["incident_id"] == "arabian_sea_mumbai_offshore"
+
+@pytest.mark.real_data
+def test_real_scene_id_resolution_if_available():
+    """The indexed real-scene path is tested only when its SAR TIFF is present."""
+    real_sar = (Path(__file__).resolve().parents[1] / "data" / "sar"
+                / "arabian_sea_mumbai_offshore.tif")
+    if not real_sar.is_file():
+        pytest.skip("requires data/sar/arabian_sea_mumbai_offshore.tif")
+    result = predict_scene(str(real_sar), prefer_model=False)
+    document = to_contract_a(result)
+    assert document["incident_id"] == "arabian_sea_mumbai_offshore"
 
 
 def test_vectorize_requires_raster():

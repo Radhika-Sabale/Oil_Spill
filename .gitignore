@@ -56,3 +56,4 @@ p2.docx
 #Runtime files to be ignored
 data/server*.log
 data/tidetrace-server.pid
+data/norse2019_forcing/.pytest-tmp/

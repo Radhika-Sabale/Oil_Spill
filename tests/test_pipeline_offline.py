@@ -12,6 +12,8 @@ import socket
 
 import pytest
 
+pytestmark = pytest.mark.synthetic_data
+
 
 LOOPBACK = {"127.0.0.1", "::1", "localhost", "0.0.0.0", ""}
 

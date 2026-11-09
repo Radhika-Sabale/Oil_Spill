@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="TideTrace — NTRO Oil Spill Attribution Console. Detect oil slicks in SAR imagery, trace them back to their origin, and identify the vessel responsible.">
+<title>TideTrace — Oil Spill Attribution</title>
+
+<!-- Google Fonts: Geist -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="/static/style.css?v=__V__">
+<link rel="stylesheet" href="/static/landing.css?v=__V__">
+
+<script>
+  /* Set the theme before first paint, so a reload never flashes the wrong one. */
+  try {
+    var t = localStorage.getItem("tidetrace-theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch (e) { /* private mode: fall through to the dark default */ }
+</script>
+</head>
+<body>
+
+<!-- ============================================================ Video Background -->
+<video
+  autoplay
+  muted
+  loop
+  playsinline
+  class="video-bg"
+  poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080'%3E%3Crect width='1920' height='1080' fill='%23090f15'/%3E%3C/svg%3E"
+>
+  <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_204221_5339e40b-e73d-4ab0-9c65-79c18c66fd50.mp4" type="video/mp4">
+</video>
+
+<!-- ============================================================ Root Container -->
+<div class="root">
+
+  <!-- ============================================================ Navbar -->
+  <header class="navbar">
+    <a href="#hero" class="brand" aria-label="TideTrace home">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14.5" class="mk-ring"/>
+        <path class="mk-wave" d="M3.5 19c3-2.6 5.5-2.6 8.5 0s5.5 2.6 8.5 0 5.5-2.6 8-.4"/>
+        <path class="mk-wave" d="M4.5 24c2.7-2.3 5-2.3 7.7 0s5 2.3 7.7 0 5-2.3 7.3-.3"/>
+        <path class="mk-drop" d="M16 5.5c2.9 3.6 4.4 6.2 4.4 8.1a4.4 4.4 0 0 1-8.8 0c0-1.9 1.5-4.5 4.4-8.1Z"/>
+      </svg>
+      <span class="brand-text"><b>TIDETRACE</b></span>
+    </a>
+
+    <nav class="nav-links" role="navigation" aria-label="Primary">
+      <a href="#hero" class="nav-link" data-nav>Home</a>
+      <a href="#capabilities" class="nav-link" data-nav>Capabilities</a>
+      <a href="#how-it-works" class="nav-link" data-nav>How It Works</a>
+      <a href="#scenes" class="nav-link" data-nav>Scenes</a>
+    </nav>
+
+    <div class="nav-right">
+      <a href="/console" class="btn-talk" data-nav>Launch Console</a>
+
+      <button class="hamburger" id="menu-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg class="hamburger-icon menu-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="3" y1="12" x2="21" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="3" y1="18" x2="21" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <svg class="hamburger-icon x-icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================ Mobile Menu -->
+  <div class="mobile-menu" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Menu">
+    <nav class="mobile-nav">
+      <a href="#hero" class="mobile-link" data-mobile-nav>Home</a>
+      <a href="#capabilities" class="mobile-link" data-mobile-nav>Capabilities</a>
+      <a href="#how-it-works" class="mobile-link" data-mobile-nav>How It Works</a>
+      <a href="#scenes" class="mobile-link" data-mobile-nav>Scenes</a>
+      <a href="/console" class="btn-talk-mobile" data-mobile-nav>Launch Console</a>
+    </nav>
+  </div>
+
+  <!-- ============================================================ Hero Section -->
+  <main id="hero" class="hero">
+
+    <!-- Top section: badge + heading -->
+    <div class="hero-top">
+      <div class="badge animate-fade-slide-up">
+        <span class="badge-dot"></span>
+        Marine Pollution Intelligence
+      </div>
+
+      <h1 class="hero-heading animate-fade-slide-up">
+        Finding oil spills<br/>
+        from space,<br/>
+        tracing them home.
+      </h1>
+    </div>
+
+    <!-- Bottom section: paragraph + CTA -->
+    <div class="hero-bottom">
+      <p class="hero-sub animate-fade-slide-up">
+        SAR detection, drift reconstruction, and AIS-based vessel attribution —
+        running fully offline on a single laptop. No cloud. No login. No CUDA.
+      </p>
+
+      <div class="hero-cta animate-fade-slide-up">
+        <a href="/console" class="btn-explore">
+          Launch Console
+          <svg class="arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <a href="#how-it-works" class="btn-learn">
+          See how it works
+        </a>
+      </div>
+
+      <!-- Stats row -->
+      <div class="hero-stats animate-fade-slide-up">
+        <div class="stat">
+          <span class="stat-value">126</span>
+          <span class="stat-label">tests passing</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">0.889</span>
+          <span class="stat-label">IoU on validation</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat">
+          <span class="stat-value">30–45s</span>
+          <span class="stat-label">full run on CPU</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scroll indicator -->
+    <div class="scroll-indicator animate-fade-slide-up">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" class="scroll-icon">
+        <path d="M12 5v14M5 12l7 7 7-7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+  </main>
+
+  <!-- ============================================================ Capabilities Section -->
+  <section id="capabilities" class="section capabilities">
+    <div class="section-inner">
+      <div class="section-label animate-fade-slide-up">What it does</div>
+      <h2 class="section-heading animate-fade-slide-up">Three clauses.<br/>One pipeline.</h2>
+
+      <div class="cap-grid">
+        <article class="cap-card animate-fade-slide-up">
+          <div class="cap-icon cap-icon--detect">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="7"/>
+              <path d="M21 21l-4.3-4.3"/>
+              <path d="M8 11h6M11 8v6"/>
+            </svg>
+          </div>
+          <h3 class="cap-title">Detect</h3>
+          <p class="cap-body">
+            UNet++ segmentation over 512 px tiles of a 2048 px dual-pol SAR chip,
+            cosine-tapered into a single slick mask. Separate look-alike rejection.
+            Reports a clean scene as a measurement, not an empty panel.
+          </p>
+          <ul class="cap-list">
+            <li><span class="cap-list-tag">IoU oil</span> 0.889 on Zenodo validation</li>
+            <li><span class="cap-list-tag">Geometry</span> area, length, width, orientation</li>
+            <li><span class="cap-list-tag">Age</span> drift-time proxy when traceable</li>
+            <li><span class="cap-list-tag">EO</span> optional Sentinel-2 corroboration</li>
+          </ul>
+        </article>
+
+        <article class="cap-card animate-fade-slide-up">
+          <div class="cap-icon cap-icon--drift">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 12h4l2-3 2 3h6l2-3 2 3h4"/>
+              <path d="M3 18h18"/>
+              <path d="M5 6h14"/>
+            </svg>
+          </div>
+          <h3 class="cap-title">Trace</h3>
+          <p class="cap-body">
+            Fifty-particle RK4 backward ensemble at 5-minute steps, seeded inside
+            the slick by rejection sampling so the cloud has the shape of the real
+            slick. Selected at minimum ensemble variance; projected forward with an
+            uncalibrated 95% KDE origin region.
+          </p>
+          <ul class="cap-list">
+            <li><span class="cap-list-tag">Integrator</span> RK4 backward, RK2 forward</li>
+            <li><span class="cap-list-tag">Ensemble</span> 50 particles, 0.1 m/s jitter</li>
+            <li><span class="cap-list-tag">Fields</span> cached ERA5 wind + CMEMS currents</li>
+            <li><span class="cap-list-tag">Forecast</span> percentile dispersion cone</li>
+          </ul>
+        </article>
+
+        <article class="cap-card animate-fade-slide-up">
+          <div class="cap-icon cap-icon--vessels">
+            <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 20l2-10h4l2 8 2-6 2 6h4l2 8"/>
+              <circle cx="7" cy="15" r="1" fill="currentColor"/>
+              <circle cx="17" cy="15" r="1" fill="currentColor"/>
+            </svg>
+          </div>
+          <h3 class="cap-title">Attribute</h3>
+          <p class="cap-body">
+            Historic AIS reconstructed into SQLite, resampled to one minute, filtered
+            through a spatio-temporal funnel around the origin. Five weighted
+            sub-scores — proximity, time, trajectory, type, behaviour — plus a track
+            confidence term that penalises dead reckoning.
+          </p>
+          <ul class="cap-list">
+            <li><span class="cap-list-tag">Funnel</span> spatio-temporal, origin zone + window</li>
+            <li><span class="cap-list-tag">Scores</span> 5 sub-scores, weighted, with reasons</li>
+            <li><span class="cap-list-tag">Confidence</span> penalises assumed track segments</li>
+            <li><span class="cap-list-tag">Result</span> ranked likelihood, not proof</li>
+          </ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ How It Works Section -->
+  <section id="how-it-works" class="section pipeline-section">
+    <div class="pipeline-bg" aria-hidden="true">
+      <div class="pipeline-grid"></div>
+    </div>
+
+    <div class="section-inner pipeline-inner">
+      <div class="pipeline-copy animate-fade-slide-up">
+        <div class="section-label section-label--accent">The pipeline</div>
+        <h2 class="section-heading section-heading--sm">One button.<br/>Twelve steps.</h2>
+        <p class="pipeline-lead">
+          Every run writes a job document. Every number on the console comes from
+          that document, which is why a finished case is linkable and exportable
+          rather than trapped in the view.
+        </p>
+        <a href="/console" class="btn-explore btn-explore--ghost">
+          Run a scene
+          <svg class="arrow" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+      </div>
+
+      <ol class="pipeline-steps animate-fade-slide-up">
+        <li class="step-item">
+          <span class="step-num">01</span>
+          <span class="step-name">Detect</span>
+          <span class="step-desc">UNet++ over 512 px tiles, cosine-tapered stitch</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">02</span>
+          <span class="step-name">Characterise</span>
+          <span class="step-desc">Local AEQD frame, contours, PCA orientation</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">03</span>
+          <span class="step-name">Corroborate</span>
+          <span class="step-desc">Sentinel-2 optical chip against the SAR footprint</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">04</span>
+          <span class="step-name">Metocean</span>
+          <span class="step-desc">Cached ERA5 wind + CMEMS currents for the footprint</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">05</span>
+          <span class="step-name">Hindcast</span>
+          <span class="step-desc">RK4 backward ensemble, 50 particles, 5-min steps</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">06</span>
+          <span class="step-name">Forecast</span>
+          <span class="step-desc">RK2 forward ensemble, percentile dispersion cone</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">07</span>
+          <span class="step-name">Age</span>
+          <span class="step-desc">Hours from origin to radar pass, labelled a drift proxy</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">08</span>
+          <span class="step-name">AIS ingest</span>
+          <span class="step-desc">MarineCadastre schema into SQLite, resampled to 1 min</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">09</span>
+          <span class="step-name">Filter</span>
+          <span class="step-desc">Spatio-temporal funnel around the origin zone</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">10</span>
+          <span class="step-name">Score</span>
+          <span class="step-desc">Five sub-scores, weights, track confidence</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">11</span>
+          <span class="step-name">Rank</span>
+          <span class="step-desc">Leaderboard with reason codes, not just a score</span>
+        </li>
+        <li class="step-item">
+          <span class="step-num">12</span>
+          <span class="step-name">Report</span>
+          <span class="step-desc">Attribution note, HTML and PDF, from the job doc</span>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================================================ Scenes Section -->
+  <section id="scenes" class="section scenes-section">
+    <div class="section-inner">
+      <div class="section-label animate-fade-slide-up">Demo scenes</div>
+      <h2 class="section-heading animate-fade-slide-up">Four real acquisitions.<br/>Two with real AIS.</h2>
+
+      <div class="scenes-grid animate-fade-slide-up">
+        <div class="scene-card">
+          <div class="scene-map" style="background: linear-gradient(135deg, #0f1922 0%, #1a2936 100%);">
+            <div class="scene-map-pin" style="left: 52%; top: 48%;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+              </svg>
+            </div>
+            <div class="scene-label-scene">Gulf of Mexico</div>
+            <div class="scene-coords">MC20 · 2023-09-24 00:02 UTC</div>
+          </div>
+          <div class="scene-meta">
+            <div class="scene-stat">
+              <span class="scene-stat-val">Real AIS</span>
+              <span class="scene-stat-label">MarineCadastre</span>
+            </div>
+            <div class="scene-stat">
+              <span class="scene-stat-val">Chronic</span>
+              <span class="scene-stat-label">discharge site</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="scene-card">
+          <div class="scene-map" style="background: linear-gradient(135deg, #0f1922 0%, #1a2936 100%);">
+            <div class="scene-map-pin" style="left: 38%; top: 52%;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+              </svg>
+            </div>
+            <div class="scene-label-scene">Santa Barbara Channel</div>
+            <div class="scene-coords">Natural seeps · 2023-08-29 01:59 UTC</div>
+          </div>
+          <div class="scene-meta">
+            <div class="scene-stat">
+              <span class="scene-stat-val">Real AIS</span>
+              <span class="scene-stat-label">MarineCadastre</span>
+            </div>
+            <div class="scene-stat">
+              <span class="scene-stat-val">Seeps</span>
+              <span class="scene-stat-label">natural source</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="scene-card">
+          <div class="scene-map" style="background: linear-gradient(135deg, #0f1922 0%, #1a2936 100%);">
+            <div class="scene-map-pin" style="left: 72%; top: 44%;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+              </svg>
+            </div>
+            <div class="scene-label-scene">Arabian Sea</div>
+            <div class="scene-coords">Mumbai offshore · 2024-03-13 01:03 UTC</div>
+          </div>
+          <div class="scene-meta">
+            <div class="scene-stat">
+              <span class="scene-stat-val scene-stat-sim">Simulated AIS</span>
+              <span class="scene-stat-label">outside coverage</span>
+            </div>
+            <div class="scene-stat">
+              <span class="scene-stat-val">Uniform</span>
+              <span class="scene-stat-label">wind-roughened water</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="scene-card">
+          <div class="scene-map" style="background: linear-gradient(135deg, #0f1922 0%, #1a2936 100%);">
+            <div class="scene-map-pin" style="left: 28%; top: 58%;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+                <circle cx="12" cy="9" r="2.5"/>
+              </svg>
+            </div>
+            <div class="scene-label-scene">Caspian Sea</div>
+            <div class="scene-coords">Baku offshore · 2023-10-14 02:44 UTC</div>
+          </div>
+          <div class="scene-meta">
+            <div class="scene-stat">
+              <span class="scene-stat-val scene-stat-sim">Simulated AIS</span>
+              <span class="scene-stat-label">outside coverage</span>
+            </div>
+            <div class="scene-stat">
+              <span class="scene-stat-val">Enclosed</span>
+              <span class="scene-stat-label">basin, landlocked</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="scenes-note animate-fade-slide-up">
+        Simulated traffic is a simulator over the scene's real geographic box and
+        real time window, written in MarineCadastre columns. The console prints
+        which is which on every scene card, so a simulated track is never presented
+        as a received one.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============================================================ Footer -->
+  <footer class="footer">
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <svg class="mark mark-sm" viewBox="0 0 32 32" aria-hidden="true">
+          <circle cx="16" cy="16" r="14.5" class="mk-ring"/>
+          <path class="mk-wave" d="M3.5 19c3-2.6 5.5-2.6 8.5 0s5.5 2.6 8.5 0 5.5-2.6 8-.4"/>
+          <path class="mk-wave" d="M4.5 24c2.7-2.3 5-2.3 7.7 0s5 2.3 7.7 0 5-2.3 7.3-.3"/>
+          <path class="mk-drop" d="M16 5.5c2.9 3.6 4.4 6.2 4.4 8.1a4.4 4.4 0 0 1-8.8 0c0-1.9 1.5-4.5 4.4-8.1Z"/>
+        </svg>
+        <div>
+          <div class="footer-name">TideTrace</div>
+          <div class="footer-tag">NTRO · Oil Spill Attribution Console</div>
+        </div>
+      </div>
+
+      <nav class="footer-nav">
+        <div class="footer-col">
+          <div class="footer-col-title">Product</div>
+          <a href="#capabilities">Capabilities</a>
+          <a href="#how-it-works">Pipeline</a>
+          <a href="#scenes">Scenes</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Launch</div>
+          <a href="/console">Console</a>
+          <a href="/console#job=">Run history</a>
+          <a href="/api/health">Health</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">SIH</div>
+          <a href="https://technex.tntech.edu.in/" target="_blank" rel="noopener">Technex 2026</a>
+          <span class="footer-sih">SIH 26143</span>
+        </div>
+      </nav>
+
+      <div class="footer-bottom">
+        <span class="footer-copy">
+          Built for offline operation. No Docker, no cloud service, no login at run time.
+        </span>
+        <span class="footer-mark">
+          Sentinel-1 SAR · ERA5 wind · CMEMS currents · MarineCadastre AIS
+        </span>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  /* ================================================================
+     Navigation
+     ================================================================ */
+  (function () {
+    "use strict";
+
+    var menuToggle = document.getElementById("menu-toggle");
+    var mobileMenu = document.getElementById("mobile-menu");
+    var menuIcon = menuToggle.querySelector(".menu-icon");
+    var xIcon = menuToggle.querySelector(".x-icon");
+    var isOpen = false;
+
+    function setOpen(open) {
+      isOpen = open;
+      menuToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      menuIcon.style.display = open ? "none" : "";
+      xIcon.style.display = open ? "" : "none";
+      mobileMenu.classList.toggle("open", open);
+      document.body.style.overflow = open ? "hidden" : "";
+    }
+
+    menuToggle.addEventListener("click", function () {
+      setOpen(!isOpen);
+    });
+
+    document.querySelectorAll("[data-mobile-nav]").forEach(function (link) {
+      link.addEventListener("click", function () {
+        setOpen(false);
+      });
+    });
+
+    document.querySelectorAll("[data-nav]").forEach(function (link) {
+      link.addEventListener("click", function (e) {
+        var href = link.getAttribute("href");
+        if (!href || href.charAt(0) !== "#") return;
+        var target = document.querySelector(href);
+        if (!target) return;
+        e.preventDefault();
+        var top = target.getBoundingClientRect().top + window.pageYOffset - 80;
+        window.scrollTo({ top: top, behavior: "smooth" });
+      });
+    });
+
+    var navLinks = document.querySelectorAll(".nav-link");
+    var sections = ["hero", "capabilities", "how-it-works", "scenes"];
+
+    function updateActiveLink() {
+      var scrollY = window.pageYOffset + 200;
+      var current = sections[0];
+      for (var i = 0; i < sections.length; i++) {
+        var el = document.getElementById(sections[i]);
+        if (el && el.offsetTop <= scrollY) current = sections[i];
+      }
+      navLinks.forEach(function (link) {
+        var href = link.getAttribute("href");
+        link.classList.toggle("active", href === "#" + current);
+      });
+    }
+
+    window.addEventListener("scroll", updateActiveLink, { passive: true });
+    window.addEventListener("resize", updateActiveLink);
+    updateActiveLink();
+  })();
+</script>
+
+</body>
+</html>
