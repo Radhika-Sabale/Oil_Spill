@@ -123,26 +123,10 @@ def _asset_stamp() -> str:
 
 @app.get("/", include_in_schema=False)
 def index():
-    """Serve the landing page at /, with content-addressed asset URLs.
+    """Serve the operations dashboard at /, with content-addressed asset URLs.
 
-    The landing page is the public face; the console lives at /console.
-    Both get cache-busted asset URLs so a browser never pairs a stale DOM
-    with a fresh script.
-    """
-    page = Path(config.STATIC_DIR) / "landing.html"
-    if not page.exists():
-        return JSONResponse({"error": "static/landing.html is missing"}, status_code=500)
-    html = page.read_text(encoding="utf-8").replace("__V__", _asset_stamp())
-    return HTMLResponse(html, headers={"Cache-Control": "no-store, must-revalidate"})
-
-
-@app.get("/console", include_in_schema=False)
-def console():
-    """Serve the operations console shell, uncached.
-
-    The console is the working UI for operators: scene picker, chart, time axis,
-    evidence rail. It is separate from the landing page so the public face can stay
-    marketing without touching the tool.
+    The dashboard is the application's single entry point. Hashing its assets
+    prevents a browser from pairing a stale DOM with a fresh script.
     """
     page = Path(config.STATIC_DIR) / "index.html"
     if not page.exists():
