@@ -3,13 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="TideTrace — NTRO Oil Spill Attribution Console. Detect oil slicks in SAR imagery, trace them back to their origin, and identify the vessel responsible.">
-<title>TideTrace — Oil Spill Attribution</title>
+<meta name="description" content="SentinelTrace — NTRO oil spill investigation console. Detect oil slicks in SAR imagery, estimate where the slick came from, and rank AIS traffic for investigation. Every input is labelled real, simulated or missing.">
+<title>SentinelTrace — Oil Spill Attribution</title>
 
-<!-- Google Fonts: Geist -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<!-- No webfonts and no remote assets: the page, including the hero loop, is
+     served entirely from disk. -->
 
 <link rel="stylesheet" href="/static/style.css?v=__V__">
 <link rel="stylesheet" href="/static/landing.css?v=__V__">
@@ -17,38 +15,52 @@
 <script>
   /* Set the theme before first paint, so a reload never flashes the wrong one. */
   try {
-    var t = localStorage.getItem("tidetrace-theme");
+    var t = localStorage.getItem("sentineltrace-theme") || localStorage.getItem("tidetrace-theme");
     if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
   } catch (e) { /* private mode: fall through to the dark default */ }
 </script>
 </head>
 <body>
 
-<!-- ============================================================ Video Background -->
-<video
-  autoplay
-  muted
-  loop
-  playsinline
-  class="video-bg"
-  poster="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1920' height='1080'%3E%3Crect width='1920' height='1080' fill='%23090f15'/%3E%3C/svg%3E"
->
-  <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_204221_5339e40b-e73d-4ab0-9c65-79c18c66fd50.mp4" type="video/mp4">
-</video>
+<!-- ============================================================ Backdrop
+     Drawn locally: no remote video, no CDN. The same rules apply to the
+     console, which is why both pages load only from /static. -->
+<div class="hero-backdrop" aria-hidden="true">
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <svg class="hero-sweep" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs>
+      <radialGradient id="slick" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#e89550" stop-opacity=".34"/>
+        <stop offset="70%" stop-color="#e89550" stop-opacity=".06"/>
+        <stop offset="100%" stop-color="#e89550" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="1040" cy="430" rx="330" ry="190" fill="url(#slick)"/>
+    <g stroke="#4fb8dd" stroke-opacity=".20" fill="none" stroke-width="1">
+      <path d="M700 620 C 860 560, 980 600, 1120 520"/>
+      <path d="M690 660 C 870 600, 1010 640, 1160 548"/>
+      <path d="M720 560 C 880 500, 980 528, 1090 466"/>
+    </g>
+    <g stroke="#8fa6b5" stroke-opacity=".12" fill="none" stroke-width="1">
+      <path d="M0 300 H1600 M0 450 H1600 M0 600 H1600"/>
+      <path d="M200 0 V900 M600 0 V900 M1000 0 V900 M1400 0 V900"/>
+    </g>
+  </svg>
+</div>
 
 <!-- ============================================================ Root Container -->
 <div class="root">
 
   <!-- ============================================================ Navbar -->
   <header class="navbar">
-    <a href="#hero" class="brand" aria-label="TideTrace home">
+    <a href="#hero" class="brand" aria-label="SentinelTrace home">
       <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="16" r="14.5" class="mk-ring"/>
-        <path class="mk-wave" d="M3.5 19c3-2.6 5.5-2.6 8.5 0s5.5 2.6 8.5 0 5.5-2.6 8-.4"/>
-        <path class="mk-wave" d="M4.5 24c2.7-2.3 5-2.3 7.7 0s5 2.3 7.7 0 5-2.3 7.3-.3"/>
-        <path class="mk-drop" d="M16 5.5c2.9 3.6 4.4 6.2 4.4 8.1a4.4 4.4 0 0 1-8.8 0c0-1.9 1.5-4.5 4.4-8.1Z"/>
+        <path class="mk-cell" d="M16 2.5 27.7 9.2v13.5L16 29.5 4.3 22.7V9.2Z"/>
+        <path class="mk-trace" d="M9 21.2l4.5-4.7 3.2 2.7 6.2-6.5"/>
+        <circle class="mk-node" cx="22.9" cy="12.7" r="2.2"/>
       </svg>
-      <span class="brand-text"><b>TIDETRACE</b></span>
+      <span class="brand-text"><b>SENTINELTRACE</b></span>
     </a>
 
     <nav class="nav-links" role="navigation" aria-label="Primary">
@@ -88,6 +100,16 @@
 
   <!-- ============================================================ Hero Section -->
   <main id="hero" class="hero">
+
+    <!-- Looping background video, served from /static/media. The SVG backdrop
+         behind it is the first-paint and no-codec fallback. -->
+    <div class="hero-media" aria-hidden="true">
+      <video class="hero-video" id="hero-video" autoplay muted loop playsinline
+             preload="auto" tabindex="-1" disablepictureinpicture>
+        <source src="/static/media/hero-loop.mp4" type="video/mp4">
+      </video>
+      <div class="hero-scrim"></div>
+    </div>
 
     <!-- Top section: badge + heading -->
     <div class="hero-top">
@@ -429,13 +451,12 @@
     <div class="footer-inner">
       <div class="footer-brand">
         <svg class="mark mark-sm" viewBox="0 0 32 32" aria-hidden="true">
-          <circle cx="16" cy="16" r="14.5" class="mk-ring"/>
-          <path class="mk-wave" d="M3.5 19c3-2.6 5.5-2.6 8.5 0s5.5 2.6 8.5 0 5.5-2.6 8-.4"/>
-          <path class="mk-wave" d="M4.5 24c2.7-2.3 5-2.3 7.7 0s5 2.3 7.7 0 5-2.3 7.3-.3"/>
-          <path class="mk-drop" d="M16 5.5c2.9 3.6 4.4 6.2 4.4 8.1a4.4 4.4 0 0 1-8.8 0c0-1.9 1.5-4.5 4.4-8.1Z"/>
+          <path class="mk-cell" d="M16 2.5 27.7 9.2v13.5L16 29.5 4.3 22.7V9.2Z"/>
+          <path class="mk-trace" d="M9 21.2l4.5-4.7 3.2 2.7 6.2-6.5"/>
+          <circle class="mk-node" cx="22.9" cy="12.7" r="2.2"/>
         </svg>
         <div>
-          <div class="footer-name">TideTrace</div>
+          <div class="footer-name">SentinelTrace</div>
           <div class="footer-tag">NTRO · Oil Spill Attribution Console</div>
         </div>
       </div>
@@ -505,17 +526,30 @@
       });
     });
 
+    /* Anchors are left to the browser: native jumps always land, even when
+       animation frames are throttled, and CSS scroll-behavior/scroll-margin-top
+       supply the smooth feel and the navbar offset. A scripted scrollTo could
+       silently do nothing if the tab was not painting. */
     document.querySelectorAll("[data-nav]").forEach(function (link) {
-      link.addEventListener("click", function (e) {
-        var href = link.getAttribute("href");
-        if (!href || href.charAt(0) !== "#") return;
-        var target = document.querySelector(href);
-        if (!target) return;
-        e.preventDefault();
-        var top = target.getBoundingClientRect().top + window.pageYOffset - 80;
-        window.scrollTo({ top: top, behavior: "smooth" });
+      link.addEventListener("click", function () {
+        if (isOpen) setOpen(false);
       });
     });
+
+    /* Hero loop. Muted + playsinline, so autoplay is allowed; the fade only
+       runs once a frame is actually decoded, and a blocked autoplay leaves
+       the SVG backdrop visible rather than a black rectangle. */
+    var heroVideo = document.getElementById("hero-video");
+    if (heroVideo) {
+      var showFrame = function () { heroVideo.classList.add("is-playing"); };
+      if (heroVideo.readyState >= 2) showFrame();
+      heroVideo.addEventListener("playing", showFrame);
+      heroVideo.addEventListener("loadeddata", showFrame);
+      var p = heroVideo.play();
+      if (p && typeof p.catch === "function") {
+        p.catch(function () { /* autoplay refused: keep the still backdrop */ });
+      }
+    }
 
     var navLinks = document.querySelectorAll(".nav-link");
     var sections = ["hero", "capabilities", "how-it-works", "scenes"];

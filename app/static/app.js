@@ -1,11 +1,22 @@
-/* NTRO Oil Spill Attribution Console
+/* SentinelTrace Oil Spill Attribution Console
    Vanilla JS, Leaflet only. No framework, no build step, no CDN at runtime.
-   Every value rendered here comes from the job document the API returned. */
+   Every value rendered here comes from the job document the API returned.
+
+   This file owns the Leaflet console. The stage strip, data-status badges,
+   uncertainty panels, candidate evidence detail and the dossier live in
+   js/analysis-ui.js and read one derived analysis document (js/adapter.js).
+   The handoff is three CustomEvents, so this console keeps working untouched
+   if those modules are absent. */
 
 (function () {
   "use strict";
 
   var API = "";
+
+  function emit(name, detail) {
+    try { document.dispatchEvent(new CustomEvent(name, { detail: detail })); }
+    catch (e) { /* a listener must never break the console */ }
+  }
   var state = {
     scenes: [],
     scene: null,
@@ -90,14 +101,15 @@
     }).setView([20, 78], 4);
 
     map.attributionControl.setPrefix("");
-    map.attributionControl.addAttribution("TideTrace offline console");
+    map.attributionControl.addAttribution("SentinelTrace offline console");
 
     L.control.zoom({ position: "topright" }).addTo(map);
     L.control.scale({ imperial: false, position: "bottomright" }).addTo(map);
 
     // Exposed for diagnostics and for the browser checks that drive this map
     // during development. Read-only as far as the app is concerned.
-    window.__tidetrace = { map: map, layers: layerGroup, state: state };
+    window.__sentinel = { map: map, layers: layerGroup, state: state };
+    window.__tidetrace = window.__sentinel;   // old name kept for existing probes
 
     // Leaflet stacks everything in `overlayPane` by DOM insertion order, and the
     // SAR backdrop is inserted at RUN time -- after the optical chip, which is
@@ -1121,6 +1133,7 @@
       var cb = document.createElement("input");
       cb.type = "checkbox";
       cb.checked = d[2];
+      cb.setAttribute("aria-label", "Show " + d[1]);
       cb.addEventListener("change", function () {
         if (cb.checked) map.addLayer(layerGroup[d[0]]);
         else map.removeLayer(layerGroup[d[0]]);
@@ -1212,6 +1225,8 @@
     buildFrames(job);
     fitToJob(job);
     ["ex-json", "ex-geo", "ex-note"].forEach(function (id) { $(id).disabled = false; });
+    // One handoff point: every derived panel reads this document, not the DOM.
+    emit("sentinel:job", { job: job });
   }
 
   /* Detection alone is twenty-five to thirty seconds on a laptop CPU, and
@@ -1236,6 +1251,7 @@
             (p.step || "Running").toLowerCase() +
             (i > 0 ? " · step " + i + " of " + steps.length : "") +
             " · " + secs + "s";
+          emit("sentinel:progress", p);
         })
         .catch(function () { /* progress is a courtesy, never a dependency */ });
     }, 700);
@@ -1360,6 +1376,9 @@
 
     var slider = $("slider");
     if (slider) { slider.value = 0; slider.max = 0; slider.disabled = true; }
+
+    emit("sentinel:job", { job: null });
+    emit("sentinel:scene", { scene: state.scene });
   }
 
   function renderSceneInfo(scene) {
@@ -1387,7 +1406,7 @@
      slick harder to read, which is the one thing this page exists to show. */
   function applyTheme(mode) {
     document.documentElement.dataset.theme = mode;
-    try { localStorage.setItem("tidetrace-theme", mode); } catch (e) { /* private mode */ }
+    try { localStorage.setItem("sentineltrace-theme", mode); } catch (e) { /* private mode */ }
     var b = $("theme");
     if (b) {
       b.title = mode === "dark" ? "Switch to light theme" : "Switch to dark theme";
@@ -1407,7 +1426,7 @@
       .forEach(function (def) {
         var btn = $(def[0]);
         if (!btn) return;
-        var key = "tidetrace-" + def[1];
+        var key = "sentineltrace-" + def[1];
         var hidden = false;
         try { hidden = localStorage.getItem(key) === "1"; } catch (e) { /* ignore */ }
 
@@ -1428,7 +1447,7 @@
 
   function initTheme() {
     var stored = null;
-    try { stored = localStorage.getItem("tidetrace-theme"); } catch (e) { /* ignore */ }
+    try { stored = localStorage.getItem("sentineltrace-theme") || localStorage.getItem("tidetrace-theme"); } catch (e) { /* ignore */ }
     applyTheme(stored === "light" ? "light" : "dark");
     var b = $("theme");
     if (b) {
@@ -1847,6 +1866,7 @@
     renderSceneInfo(state.scene);
     loadOptical(state.scene);
     fitScene(state.scene);
+    emit("sentinel:scene", { scene: state.scene });
   }
 
   function loadScenes() {
@@ -2018,6 +2038,13 @@
     loadHealth().catch(function (e) { console.error(e); });
     loadScenes().then(openLinkedJob).catch(function (e) {
       $("notices").appendChild(el("div", "notice bad", "Could not load scenes: " + e.message));
+    });
+    // A case link is a fragment, so opening it from the console is a same-document
+    // navigation: no reload happens and boot() never runs again. Without this a
+    // pasted #job=... link silently did nothing.
+    window.addEventListener("hashchange", function () {
+      if (!/job=/.test(location.hash)) return;
+      openLinkedJob();
     });
     getJSON("/api/scoring").then(renderWeights).catch(function (e) { console.error(e); });
   }

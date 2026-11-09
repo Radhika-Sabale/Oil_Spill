@@ -1,19 +1,28 @@
 /* ================================================================
-   TideTrace Landing Page
-   Adapted from the Foldcraft hero prompt, themed for an oil spill
-   attribution console: dark, ocean-inspired, amber accent.
+   SentinelTrace landing page
+   Dark, ocean-inspired, amber accent. Local CSS, inline SVG and one local
+   video loop (app/static/media/hero-loop.mp4): no webfont, no CDN, and no
+   network request at run time.
    ================================================================ */
 
 /* ---- Reset & base ---- */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
-  height: 100%;
-  font-family: "Geist", "Inter", "Segoe UI Variable Text", "Segoe UI", system-ui,
+  /* height: auto overrides the console sheet, which pins html/body to one
+     viewport with overflow:hidden. That rule is right for the dashboard and
+     wrong here: it made the whole landing page unscrollable, so every anchor
+     link silently did nothing. */
+  height: auto;
+  min-height: 100%;
+  font-family: "Segoe UI Variable Text", "Segoe UI", system-ui,
                -apple-system, "Helvetica Neue", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color-scheme: dark;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -22,20 +31,89 @@ body {
   overflow-x: hidden;
 }
 
+/* The fixed navbar would otherwise cover the top of a jumped-to section.
+   scroll-padding lives on the scroll container: a per-section scroll-margin is
+   ignored for sections that are themselves scroll containers (overflow:hidden),
+   which is what the pipeline section is. */
+html { scroll-padding-top: 84px; }
+
 /* ================================================================
-   Video Background
+   Backdrop (local)
    ================================================================ */
-.video-bg {
+.hero-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 72% 42%, #122532 0%, #0b1621 46%, #090f15 100%);
+}
+.hero-grid {
+  position: absolute; inset: -10%;
+  background-image:
+    linear-gradient(rgba(126, 164, 188, .07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(126, 164, 188, .07) 1px, transparent 1px);
+  background-size: 72px 72px;
+  transform: perspective(900px) rotateX(24deg) scale(1.15);
+  transform-origin: 50% 60%;
+  opacity: .7;
+}
+.hero-glow {
+  position: absolute; right: -8%; top: 18%;
+  width: 62vw; height: 62vw; max-width: 900px; max-height: 900px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 149, 80, .16) 0%, rgba(232, 149, 80, .04) 45%, transparent 68%);
+  filter: blur(8px);
+}
+.hero-sweep {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  opacity: .85;
+}
+
+/* ================================================================
+   Hero video
+   Local file: app/static/media/hero-loop.mp4, served by the app. There is
+   no remote media request, so the loop still plays with the network off.
+   The SVG backdrop above stays underneath as the frame-zero / no-codec
+   fallback, so the hero never goes black.
+   ================================================================ */
+.hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 70% 45%, #16303f 0%, #0b1621 55%, #090f15 100%);
+}
+
+.hero-video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 70% center;
-  z-index: 0;
-  will-change: transform;
+  object-position: 70% 50%;
+  opacity: 0;
+  transition: opacity 1.2s ease;
+  filter: saturate(1.08) contrast(1.03) brightness(.92);
 }
+
+.hero-video.is-playing { opacity: 1; }
+
+.hero-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(9, 15, 21, .93) 0%, rgba(9, 15, 21, .74) 34%,
+                    rgba(9, 15, 21, .24) 64%, rgba(9, 15, 21, .5) 100%),
+    linear-gradient(180deg, rgba(9, 15, 21, .6) 0%, rgba(9, 15, 21, .1) 38%,
+                    rgba(9, 15, 21, .82) 82%, #090f15 100%);
+}
+
+/* Content rides above the video. */
+.hero > .hero-top,
+.hero > .hero-bottom,
+.hero > .scroll-indicator { position: relative; z-index: 2; }
 
 /* ================================================================
    Root Container
@@ -54,8 +132,8 @@ body {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(138, 90, 48, 0.08) 0%, transparent 60%),
-    linear-gradient(180deg, rgba(9, 15, 21, 0.75) 0%, rgba(9, 15, 21, 0.85) 50%, rgba(9, 15, 21, 0.95) 100%);
+    radial-gradient(ellipse at 50% 0%, rgba(138, 90, 48, 0.06) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(9, 15, 21, 0.18) 0%, rgba(9, 15, 21, 0.34) 50%, rgba(9, 15, 21, 0.9) 100%);
   z-index: 1;
   pointer-events: none;
 }
@@ -157,21 +235,24 @@ body {
   flex-shrink: 0;
 }
 
-.mk-ring {
+/* Sentinel cell with a plotted trace: the mark is a hexagon, the route is
+   the amber line, the last received position is the node. */
+.mk-cell {
   fill: none;
   stroke: #4fb8dd;
-  stroke-width: 1.4;
-  opacity: 0.45;
+  stroke-width: 1.35;
+  opacity: 0.6;
 }
 
-.mk-wave {
+.mk-trace {
   fill: none;
-  stroke: #4fb8dd;
-  stroke-width: 1.6;
+  stroke: #e89550;
+  stroke-width: 1.8;
   stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.mk-drop {
+.mk-node {
   fill: #e89550;
 }
 
@@ -310,7 +391,9 @@ body {
   flex-direction: column;
   justify-content: space-between;
   min-height: 100vh;
+  min-height: 100svh;
   padding: 100px 24px 80px;
+  overflow: hidden;
 }
 
 .hero-inner {
@@ -1104,5 +1187,19 @@ body {
 
   .scroll-indicator {
     display: none;
+  }
+
+  /* A looping background video is motion: offer the still backdrop instead. */
+  .hero-video {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-video { object-position: 64% 50%; }
+  .hero-scrim {
+    background:
+      linear-gradient(180deg, rgba(9, 15, 21, .8) 0%, rgba(9, 15, 21, .35) 40%,
+                      rgba(9, 15, 21, .88) 80%, #090f15 100%);
   }
 }
