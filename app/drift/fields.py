@@ -40,6 +40,8 @@ def _to_epoch(t) -> float:
     if isinstance(t, (int, float, np.floating, np.integer)):
         return float(t)
     if isinstance(t, np.datetime64):
+        if np.isnat(t):
+            raise ValueError("metocean timestamps must not be NaT")
         return float(t.astype("datetime64[s]").astype(np.int64))
     if isinstance(t, str):
         s = t.strip().replace("Z", "+00:00")
@@ -244,22 +246,37 @@ def _from_arrays(times, lats, lons, data, source, license_, scene_id, synthetic=
     lats = np.asarray(lats, dtype=float).ravel()
     lons = np.asarray(lons, dtype=float).ravel()
 
+    for name, axis in (("time", times), ("latitude", lats), ("longitude", lons)):
+        if axis.size == 0 or not np.isfinite(axis).all():
+            raise ValueError("metocean %s axis must be non-empty and finite" % name)
+
     order_t = np.argsort(times)
     order_y = np.argsort(lats)
     order_x = np.argsort(lons)
+    sorted_axes = (times[order_t], lats[order_y], lons[order_x])
+    for name, axis in zip(("time", "latitude", "longitude"), sorted_axes):
+        if np.any(np.diff(axis) <= 0):
+            raise ValueError("metocean %s axis must be strictly increasing without duplicates" % name)
+    expected_shape = (times.size, lats.size, lons.size)
     cube = {}
     for k in _VARS:
         arr = np.asarray(data[k], dtype=float)
+        if arr.shape != expected_shape:
+            raise ValueError("metocean %s shape %s does not match (time, lat, lon) axes %s"
+                             % (k, arr.shape, expected_shape))
         arr = arr[order_t][:, order_y][:, :, order_x]
-        cube[k] = np.nan_to_num(arr, nan=0.0)
+        cube[k] = np.nan_to_num(arr, nan=0.0, posinf=0.0, neginf=0.0)
     for k in _OPTIONAL_VARS:
         if k in data:
             arr = np.asarray(data[k], dtype=float)
+            if arr.shape != expected_shape:
+                raise ValueError("metocean %s shape %s does not match (time, lat, lon) axes %s"
+                                 % (k, arr.shape, expected_shape))
             cube[k] = arr[order_t][:, order_y][:, :, order_x]
     return MetoceanField(
-        times=times[order_t],
-        lats=lats[order_y],
-        lons=lons[order_x],
+        times=sorted_axes[0],
+        lats=sorted_axes[1],
+        lons=sorted_axes[2],
         data=cube,
         source=source,
         license=license_,

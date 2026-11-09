@@ -10,6 +10,8 @@ from scipy.io import netcdf_file
 
 from scripts import norse2019_adapter as adapter
 
+pytestmark = pytest.mark.real_data
+
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "norse2019_forcing"
 
