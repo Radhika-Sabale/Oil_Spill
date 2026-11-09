@@ -112,7 +112,7 @@ def _asset_stamp() -> str:
     h = hashlib.sha256()
     h.update(config.VERSION.encode("utf-8"))
     static = Path(config.STATIC_DIR)
-    for name in ("app.js", "style.css", "index.html"):
+    for name in ("app.js", "style.css", "landing.css", "landing.html", "index.html"):
         f = static / name
         try:
             h.update(f.read_bytes())
