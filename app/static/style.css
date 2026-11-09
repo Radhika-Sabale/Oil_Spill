@@ -222,6 +222,20 @@ html, body {
 
 .view { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 
+/* ---- home link in app bar ----------------------------------------------- */
+.nav-spacer { flex: 1; }
+.nav-link-home {
+  display: inline-flex; align-items: center; gap: 6px;
+  text-decoration: none; flex-shrink: 0;
+  font: 600 11px/1 var(--sans); letter-spacing: .11em; text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 17px 12px 15px;
+  border-radius: 2px;
+  transition: color .15s ease;
+}
+.nav-link-home:hover { color: var(--ink-2); }
+.nav-link-home svg { flex: none; }
+
 /* ---- scene list ---------------------------------------------------------
    The scene picker is the case list: each row carries the two facts that
    decide whether a run means anything: when the radar passed, and whether the
