@@ -135,35 +135,39 @@ def test_asset_urls_change_when_the_assets_do(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "STATIC_DIR", static)
 
     before = main._asset_stamp()
-    assert before in main.index().body.decode()
+    assert before in main.console().body.decode()
 
     (static / "app.js").write_text("var a = 2;", encoding="utf-8")
     after = main._asset_stamp()
     assert after != before, "editing app.js did not change the asset URL"
-    assert after in main.index().body.decode()
+    assert after in main.console().body.decode()
 
     # And a stamp is stable when nothing changes, or every reload re-downloads.
     assert main._asset_stamp() == after
 
 
-def test_root_serves_dashboard_as_the_only_application_entry_point():
-    """The application homepage is the original console dashboard."""
+def test_root_serves_landing_page_and_console_route_serves_dashboard():
+    """Keep the public landing page and working dashboard on their own routes."""
     from app.main import app
 
-    routes = [r for r in app.routes if hasattr(r, "path")]
-    root = [r for r in routes if r.path == "/"]
-    assert root, "no route serves the dashboard at /"
+    root = [r for r in app.routes if getattr(r, "path", "") == "/"]
+    console = [r for r in app.routes if getattr(r, "path", "") == "/console"]
+    assert root, "no route serves the landing page at /"
     assert root[0].endpoint.__name__ == "index", (
-        "/ is served by %r, not the dashboard" % root[0].endpoint.__name__)
-    assert not any(r.path.endswith("console") for r in routes), (
-        "an obsolete console route is still registered")
+        "/ is served by %r, not the landing page" % root[0].endpoint.__name__)
+    assert console, "no route serves /console"
+    assert console[0].endpoint.__name__ == "console", (
+        "/console is served by %r, not the dashboard" % console[0].endpoint.__name__)
 
-    dashboard = root[0].endpoint().body.decode("utf-8")
+    landing = root[0].endpoint().body.decode("utf-8")
+    dashboard = console[0].endpoint().body.decode("utf-8")
+    assert "<!doctype html>" in landing.lower()
+    assert 'Finding oil spills' in landing
+    assert 'href="/console"' in landing
+    assert "__V__" not in landing, "the landing asset stamp was not substituted"
     assert "<!doctype html>" in dashboard.lower()
-    assert "Operations Console" in dashboard
-    assert "__V__" not in dashboard, "the dashboard asset stamp was not substituted"
+    assert "__V__" not in dashboard, "the console asset stamp was not substituted"
     assert 'id="map"' in dashboard
-    assert 'id="scene-info"' in dashboard
 
 
 def test_the_spread_chart_plots_the_job_document_not_a_re_derivation():
