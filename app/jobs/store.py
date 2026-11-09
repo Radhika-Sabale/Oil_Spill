@@ -36,8 +36,17 @@ def save(job_id: str, document: Dict[str, Any]) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     with _LOCK:
         tmp = p.with_suffix(".json.part")
-        tmp.write_text(json.dumps(document, indent=2, default=_default), encoding="utf-8")
-        tmp.replace(p)      # atomic: a reader never sees a half-written document
+        try:
+            tmp.write_text(json.dumps(document, indent=2, default=_default), encoding="utf-8")
+            tmp.replace(p)  # atomic: a reader never sees a half-written document
+        except Exception:
+            # A failed write/replace must not leave an incomplete temp artifact
+            # that can be mistaken for a recoverable job on a later run.
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise
     prune()
     return p
 

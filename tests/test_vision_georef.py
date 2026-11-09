@@ -116,6 +116,7 @@ def test_area_consistency_synthetic():
     )
 
 
+@pytest.mark.real_data
 def test_area_consistency_real_scene_if_available():
     """Check area consistency across real scene polygons and record maximum deviation."""
     real_sar = config.SAR_DIR / "gom_mc20_chronic_slick.tif"

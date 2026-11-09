@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import numpy as np
 import pytest
 
+pytestmark = pytest.mark.synthetic_data
+
 
 T0 = datetime(2024, 2, 14, 6, 0, tzinfo=timezone.utc)
 
