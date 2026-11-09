@@ -144,9 +144,25 @@ def test_m3_analysis_drift_map_navigation_reports_and_error_states(local_app, tm
         try:
             page.goto(local_app["base_url"], wait_until="networkidle")
             expect(page).to_have_title(re.compile("TideTrace"))
+
+            # The public root is the landing page; enter the dashboard through
+            # the same desktop call to action visitors use.
+            expect(page.get_by_role("heading", name=re.compile("Finding oil spills"))).to_be_visible()
+            page.locator(".nav-right .btn-talk").click()
+            expect(page).to_have_url(local_app["base_url"] + "/console")
             expect(page.locator("#map")).to_be_visible()
             expect(page.locator("#scene-info")).to_contain_text("No scenes indexed.")
             expect(page.get_by_role("button", name="Run analysis")).to_be_disabled()
+
+            # The mobile menu CTA must reach the same console route.
+            mobile_page = context.new_page()
+            mobile_page.set_viewport_size({"width": 390, "height": 844})
+            mobile_page.goto(local_app["base_url"], wait_until="networkidle")
+            mobile_page.locator("#menu-toggle").click()
+            mobile_page.locator(".btn-talk-mobile").click()
+            expect(mobile_page).to_have_url(local_app["base_url"] + "/console")
+            expect(mobile_page.locator("#map")).to_be_visible()
+            mobile_page.close()
 
             # Generate the project-provided synthetic scene inside this test's
             # temporary data root; the actual indexed project data stays read-only.
@@ -258,7 +274,7 @@ def test_m3_analysis_drift_map_navigation_reports_and_error_states(local_app, tm
             linked_page.on("request", lambda req: diagnostics["run_requests"].append(req.url)
                            if req.method == "POST" and req.url.endswith("/api/run") else None)
             linked_page.on("response", record_response)
-            linked_page.goto(local_app["base_url"] + "/#job=%s&view=drift" % job["job_id"],
+            linked_page.goto(local_app["base_url"] + "/console#job=%s&view=drift" % job["job_id"],
                              wait_until="networkidle")
             expect(linked_page.locator('.view[data-view="drift"]')).to_be_visible()
             expect(linked_page.locator("#origin")).to_contain_text("Origin position")
