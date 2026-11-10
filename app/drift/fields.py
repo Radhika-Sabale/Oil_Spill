@@ -94,6 +94,8 @@ class MetoceanField:
         back with empty current arrays. Drifting on wind alone is still real
         physics, but it is a weaker answer and the operator has to be told.
         """
+        if self.synthetic:
+            return False
         u = self.data.get("u_current")
         v = self.data.get("v_current")
         if u is None or v is None:
@@ -130,10 +132,10 @@ class MetoceanField:
             "wave_peak_period_range_s": ([float(np.nanmin(self.data["wave_tp"])),
                                            float(np.nanmax(self.data["wave_tp"]))]
                                           if self.has_stokes else None),
-            "mean_current_ms": round(float(np.mean(np.hypot(
-                self.data["u_current"], self.data["v_current"]))), 4),
-            "mean_wind_ms": round(float(np.mean(np.hypot(
-                self.data["u_wind10"], self.data["v_wind10"]))), 3),
+            "mean_current_ms": (None if self.synthetic else round(float(np.mean(np.hypot(
+                self.data["u_current"], self.data["v_current"]))), 4)),
+            "mean_wind_ms": (None if self.synthetic else round(float(np.mean(np.hypot(
+                self.data["u_wind10"], self.data["v_wind10"]))), 3)),
             "bounds": [round(v, 4) for v in self.bounds],
             "t_start": t0,
             "t_end": t1,

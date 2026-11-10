@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from . import config, scenes as scenes_mod
+from . import config, scenes as scenes_mod, stage1
 from .ais import availability as ais_availability
 from .ais import filter as ais_filter, ingest as ais_ingest, score as ais_score, stage4 as ais_stage4
 from .drift import advection, cone as cone_mod, fields as fields_mod, land
@@ -175,12 +175,35 @@ def detect_scene(
     render_overlays: bool = True,
     job_id: Optional[str] = None,
     trace: Optional[job_store.Trace] = None,
+    t_sat: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Segment one scene and characterise every oil and look-alike polygon."""
     trace = trace or job_store.Trace()
 
-    trace.start("DETECT", "segment Sigma0 into sea / look-alike / mineral oil")
     sar = scenes_mod.load_raster(scene)
+
+    # Stage 1: Ingest & gate (M2)
+    trace.start("INGEST", "scene validation, wind gate, CA-CFAR")
+    try:
+        stage1_report = stage1.for_scene(scene, t_sat=t_sat, sar=sar)
+    except Exception as exc:  # noqa: BLE001 - Stage 1 must never break the pipeline
+        stage1_report = {
+            "stage": "ingest",
+            "status": "unavailable",
+            "warnings": ["stage 1 could not run: %s" % exc],
+        }
+    s1_status = stage1_report.get("status", "unavailable")
+    trace.end(
+        "warn" if s1_status in ("partial", "unavailable") else "ok",
+        stage_status=s1_status,
+        product=stage1_report.get("product", {}).get("quantity"),
+        wind_gate=stage1_report.get("wind_gate", {}).get("gate"),
+        wind_speed_ms=stage1_report.get("wind_gate", {}).get("speed_ms"),
+        cfar_windows=stage1_report.get("cfar", {}).get("n_windows"),
+        cfar_retained_fraction=stage1_report.get("cfar", {}).get("retained_fraction"),
+    )
+
+    trace.start("DETECT", "segment Sigma0 into sea / look-alike / mineral oil")
     db = raster_mod.to_db(sar.array)
 
     # Coastline handling. Land is full of dark pixels that are not slicks --
@@ -301,6 +324,7 @@ def detect_scene(
 
     return {
         "scene": scene.to_dict(),
+        "stage1": stage1_report,
         "sar_bounds": list(sar.bounds_lonlat()),
         "mask": mask,
         "oil_prob": seg["oil_prob"],
@@ -351,7 +375,8 @@ def run_drift(
         _require_norse_coverage(field, (clon, clat), ring, t_sat,
                                 target_hindcast_hours, forecast_hours)
         _install_norse_strict_sampling(field)
-    covers = field.covers_interval(clat, clon, required_start, required_end)
+    covers = (not field.synthetic and
+              field.covers_interval(clat, clon, required_start, required_end))
     if ring:
         covers = covers and all(
             field.covers_interval(float(lat), float(lon), required_start, required_end)
@@ -530,6 +555,8 @@ def run_attribution(
         stage4 = {"status": "unavailable", "error": "%s: %s" % (type(exc).__name__, exc)}
         trace.end("error", error=stage4["error"])
 
+    stage4["ais_data"] = ais_data
+
     return {
         "suspects": [s.to_dict() for s in suspects],
         "funnel": funnel,
@@ -580,12 +607,14 @@ def run(
     t_obs = _utc(t_sat or scene.t_sat)
 
     det = detect_scene(scene, prefer_model=prefer_model, threshold_db=threshold_db,
-                       render_overlays=render_overlays, job_id=job_id, trace=trace)
+                       render_overlays=render_overlays, job_id=job_id, trace=trace,
+                       t_sat=t_obs)
 
     doc: Dict[str, Any] = {
         "job_id": job_id,
         "created": _iso(datetime.now(timezone.utc)),
         "status": "ok",
+        "stage1": det.get("stage1"),
         "input": {
             "scene_id": scene.id,
             "t_sat": _iso(t_obs),
@@ -652,6 +681,7 @@ def run(
                               "scoring": ais_score.explain_weights()}
         doc["trace"] = trace.to_list()
         doc["total_ms"] = trace.total_ms()
+        doc["warnings"] = list(det.get("stage1", {}).get("warnings", []))
         trace.finish()
         job_store.save(job_id, doc)
         return doc
@@ -680,7 +710,7 @@ def run(
     doc["trace"] = trace.to_list()
     doc["total_ms"] = trace.total_ms()
 
-    warnings: List[str] = []
+    warnings: List[str] = list(det.get("stage1", {}).get("warnings", []))
     if det["metrics"]["detector"] != "unet":
         warnings.append("Detection used the -22 dB baseline, not the U-Net. %s"
                         % (det["metrics"]["fallback_reason"] or ""))

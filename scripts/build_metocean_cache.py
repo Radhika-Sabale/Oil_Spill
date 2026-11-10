@@ -126,8 +126,8 @@ def fetch_wind(lats: np.ndarray, lons: np.ndarray, start: str, end: str,
         i, j = divmod(k, lons.size)
         sp = np.array(block["hourly"]["wind_speed_10m"], dtype=np.float64)
         di = np.array(block["hourly"]["wind_direction_10m"], dtype=np.float64)
-        sp = np.nan_to_num(sp, nan=0.0)
-        di = np.nan_to_num(di, nan=0.0)
+        if sp.size != nt or di.size != nt or not (np.isfinite(sp).all() and np.isfinite(di).all()):
+            raise ValueError("ERA5 wind response contains missing or invalid hourly values")
         rad = np.radians(di)
         u[:, i, j] = -sp * np.sin(rad)   # meteorological: comes FROM
         v[:, i, j] = -sp * np.cos(rad)
@@ -155,6 +155,9 @@ def fetch_currents(lats: np.ndarray, lons: np.ndarray, start: str, end: str,
 
     src_times = data[0]["hourly"]["time"]
     idx = _align(src_times, times_ref)
+    if idx is None:
+        print("  currents unavailable: timestamps do not cover the full wind interval")
+        return _zero_currents(lats, lons, times_ref) + (False,)
     nt = len(times_ref)
     u = np.zeros((nt, lats.size, lons.size), dtype=np.float32)
     v = np.zeros_like(u)
@@ -163,13 +166,12 @@ def fetch_currents(lats: np.ndarray, lons: np.ndarray, start: str, end: str,
         i, j = divmod(k, lons.size)
         sp = np.array(block["hourly"].get("ocean_current_velocity") or [], dtype=np.float64)
         di = np.array(block["hourly"].get("ocean_current_direction") or [], dtype=np.float64)
-        if sp.size == 0:
-            continue
-        good = np.isfinite(sp)
-        if good.any():
-            any_data = True
-        sp = np.nan_to_num(sp, nan=0.0) * KMH_TO_MS
-        di = np.nan_to_num(di, nan=0.0)
+        if (sp.size != len(src_times) or di.size != len(src_times)
+                or not (np.isfinite(sp).all() and np.isfinite(di).all())):
+            print("  currents unavailable: incomplete grid; wind-only field retained")
+            return _zero_currents(lats, lons, times_ref) + (False,)
+        any_data = True
+        sp = sp * KMH_TO_MS
         rad = np.radians(di)
         cu = sp * np.sin(rad)   # oceanographic: goes TO
         cv = sp * np.cos(rad)
@@ -232,7 +234,9 @@ def _flatten(lats: np.ndarray, lons: np.ndarray) -> Tuple[List[float], List[floa
 
 def _align(src_times: List[str], ref_times: List[str]) -> np.ndarray:
     pos = {t: i for i, t in enumerate(src_times)}
-    return np.array([pos.get(t, min(i, len(src_times) - 1)) for i, t in enumerate(ref_times)], dtype=int)
+    if any(t not in pos for t in ref_times):
+        return None
+    return np.array([pos[t] for t in ref_times], dtype=int)
 
 
 def _interpolate_hourly(src_times: List[str], ref_times: List[str], values) -> np.ndarray:
@@ -312,14 +316,15 @@ def fetch_currents_cmems(lats: np.ndarray, lons: np.ndarray, start: str, end: st
         # interp returns (time, lat, lon) here, which is the cube's own order.
         u = u.reshape(len(times_ref), lats.size, lons.size)
         v = v.reshape(len(times_ref), lats.size, lons.size)
-        finite = np.isfinite(u)
-        if not finite.any():
+        finite = np.isfinite(u) & np.isfinite(v)
+        if not finite.all():
             print("  CMEMS %s: every cell is masked over this box" % dataset_id)
-            return _zero_currents(lats, lons, times_ref) + (False,)
+            print("  CMEMS %s: partial values will not be substituted with zero current" % dataset_id)
+            continue
 
         coverage = 100.0 * finite.mean()
         print("  CMEMS %s: %.1f%% of cells have data" % (dataset_id, coverage))
-        return (np.nan_to_num(u, nan=0.0), np.nan_to_num(v, nan=0.0), True)
+        return (u, v, True)
 
     return _zero_currents(lats, lons, times_ref) + (False,)
 
@@ -367,22 +372,44 @@ def build_box(scene_id: str, lat: float, lon: float, t_center: datetime,
     print("[%s] wave forcing" % scene_id)
     wave_hs, wave_tp, wave_dir = fetch_waves(lats, lons, start, end, times)
     wave_data = {}
-    if wave_hs is not None and wave_tp is not None and wave_dir is not None:
+    if (wave_hs is not None and wave_tp is not None and wave_dir is not None
+            and np.isfinite(wave_hs).all() and np.isfinite(wave_tp).all()
+            and np.isfinite(wave_dir).all()):
         wave_data = {"wave_hs": wave_hs, "wave_tp": wave_tp, "wave_dir": wave_dir}
         print("  significant wave height and peak period cached")
     else:
         print("  WARNING: wave forcing unavailable; Stokes drift will be omitted")
 
+    retrieved_utc = datetime.now(timezone.utc).isoformat()
     field = fields_mod._from_arrays(
         times, lats, lons,
         {"u_current": uc, "v_current": vc, "u_wind10": uw, "v_wind10": vw,
          **wave_data},
-        source="Open-Meteo ERA5 10 m wind + %s currents%s (cached %s)"
+        source="Open-Meteo ERA5 10 m wind + %s currents%s (retrieved %s)"
                % (current_source or "no",
                   " + marine Hs/Tp/direction waves" if wave_data else "",
-                  datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+                  retrieved_utc),
         license_=LICENSE + ("; " + CMEMS_LICENSE if current_source and "CMEMS" in current_source else ""),
         scene_id=scene_id,
+        metadata={
+            "retrieved_utc": retrieved_utc,
+            "crs": "EPSG:4326",
+            "time_resolution": "hourly UTC",
+            "period_start_utc": times[0],
+            "period_end_utc": times[-1],
+            "wind": {"provider": "Open-Meteo", "dataset": "ERA5 reanalysis",
+                     "endpoint": WIND_URL,
+                     "variables": ["wind_speed_10m", "wind_direction_10m"],
+                     "units": "m/s; eastward/northward components"},
+            "currents": ({"provider": current_source,
+                          "endpoint": "Copernicus Marine Toolbox" if current_source and "CMEMS" in current_source else MARINE_URL,
+                          "variables": ["ocean_current_velocity", "ocean_current_direction"],
+                          "units": "m/s; eastward/northward components"}
+                         if ok else {"status": "unavailable; wind-only forcing"}),
+            "waves": ({"provider": "Open-Meteo Marine API", "endpoint": MARINE_URL,
+                       "variables": ["wave_height", "wave_peak_period", "wave_direction"]}
+                      if wave_data else {"status": "unavailable; Stokes drift omitted"}),
+        },
     )
     path = out_dir / ("%s.npz" % scene_id)
     fields_mod.save_npz(path, field)

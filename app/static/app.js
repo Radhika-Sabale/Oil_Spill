@@ -1873,8 +1873,8 @@
       row.appendChild(el("span", "nm", sc.title));
       var aisData = sc.ais_data || {};
       var aisStatus = aisData.status || "unverified";
-      var real = aisStatus.indexOf("real_") === 0 || aisStatus === "mixed_sources";
-      var simulated = aisStatus.indexOf("simulated_") === 0 || aisStatus === "mixed_sources";
+      var real = aisStatus.indexOf("real_") === 0 || aisStatus.indexOf("mixed_") === 0;
+      var simulated = aisStatus.indexOf("simulated_") === 0 || aisStatus.indexOf("mixed_") === 0;
       var aisLabel = aisData.label || "AIS status unverified";
       if (sc.exists === false) aisLabel += " · SAR missing";
       row.appendChild(el("span", "ais " + (real ? "real" : simulated ? "sim" : "missing") +

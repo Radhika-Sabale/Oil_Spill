@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Sequence, Tuple
 
 from .. import config
+from ..geo.crs import meters_per_degree
 
 
 def _kind(source: Optional[str]) -> str:
@@ -89,7 +90,11 @@ def inspect(path: Path = None,
         has_real = scope_counts["real"] > 0
         has_sim = scope_counts["simulated"] > 0
         if has_real and has_sim:
-            result.update(status="mixed_sources", label="Real and simulated AIS data")
+            if candidates == 0:
+                result.update(status="mixed_no_candidates",
+                              label="Real and simulated AIS queried; no matching vessels")
+            else:
+                result.update(status="mixed_sources", label="Real and simulated AIS data")
         elif has_real:
             status = "real_queried" if candidates is not None and candidates > 0 else "real_available"
             label = "Real AIS queried" if candidates is not None and candidates > 0 else "Real AIS available locally"
@@ -126,6 +131,11 @@ def scene_status(scene, path: Path = None) -> Dict[str, Any]:
         after = int(config.ORIGIN_WINDOW_H)
         window = (int((t_sat - timedelta(hours=before)).timestamp()),
                   int((t_sat + timedelta(hours=after)).timestamp()))
-        return inspect(path, scene.bounds, window)
+        west, south, east, north = [float(v) for v in scene.bounds]
+        meters_lon, meters_lat = meters_per_degree((south + north) / 2.0)
+        pad_m = (config.SEARCH_RADIUS_KM * 1.6 + 5.0) * 1000.0
+        pad_lon, pad_lat = pad_m / meters_lon, pad_m / meters_lat
+        bbox = (west - pad_lon, south - pad_lat, east + pad_lon, north + pad_lat)
+        return inspect(path, bbox, window)
     except (AttributeError, TypeError, ValueError):
         return _empty("database_unavailable", "AIS availability could not be checked")

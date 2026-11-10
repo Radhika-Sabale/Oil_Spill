@@ -184,9 +184,9 @@
     var aisSources = attr.sources_used || (attr.funnel || {}).sources_used || {};
     var aisData = attr.ais_data || scene.ais_data || {};
     var aisStatus = aisData.status || "";
-    var aisSimulated = aisStatus.indexOf("simulated_") === 0 ||
+    var aisSimulated = aisStatus.indexOf("simulated_") === 0 || aisStatus.indexOf("mixed_") === 0 ||
       Object.keys(aisSources).some(function (k) { return /synthetic|simulated|selftest/i.test(k); });
-    var aisReal = aisStatus.indexOf("real_") === 0 || aisStatus === "mixed_sources" ||
+    var aisReal = aisStatus.indexOf("real_") === 0 || aisStatus.indexOf("mixed_") === 0 ||
       Object.keys(aisSources).some(function (k) { return !/synthetic|simulated|selftest/i.test(k); });
     var aisKind = aisSimulated ? "simulated" : aisReal ? "real" : "missing";
     var h3 = stage4.h3 || {};
@@ -243,7 +243,9 @@
     inputs.push({
       id: "current", label: "Surface current field", usedBy: "Hindcast",
       provenance: !mo.source ? badge("missing", null, null, "Drift did not run.")
-        : (mo.has_currents === false
+        : (mo.synthetic
+          ? badge("simulated", mo.source, mo.t_start, "A synthetic constant current is used only as a fallback; no real current observations are available.")
+          : mo.has_currents === false
           ? badge("missing", mo.source, mo.t_start, "The cached cube carries wind but no ocean current for this basin; drift is wind driven only.")
           : badge(mo.synthetic ? "simulated" : "real", mo.source, mo.t_start, null)),
       extra: null
