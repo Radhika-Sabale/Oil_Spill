@@ -3,13 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TideTrace</title>
+<title>SentinelTrace — Operations Console</title>
+  <meta name="referrer" content="no-referrer">
 <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
 <link rel="stylesheet" href="/static/style.css?v=__V__">
 <script>
   /* Set the theme before first paint, so a reload never flashes the wrong one. */
   try {
-    var t = localStorage.getItem("tidetrace-theme");
+    var t = localStorage.getItem("sentineltrace-theme") || localStorage.getItem("tidetrace-theme");
     if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
   } catch (e) { /* private mode: fall through to the dark default */ }
 </script>
@@ -19,22 +20,28 @@
 
   <!-- ============================================================ app bar -->
   <header class="appbar">
-    <a class="brand" href="/" aria-label="TideTrace home">
+    <a class="brand" href="/" aria-label="SentinelTrace home">
       <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
-        <circle cx="16" cy="16" r="14.5" class="mk-ring"/>
-        <path class="mk-wave" d="M3.5 19c3-2.6 5.5-2.6 8.5 0s5.5 2.6 8.5 0 5.5-2.6 8-.4"/>
-        <path class="mk-wave" d="M4.5 24c2.7-2.3 5-2.3 7.7 0s5 2.3 7.7 0 5-2.3 7.3-.3"/>
-        <path class="mk-drop" d="M16 5.5c2.9 3.6 4.4 6.2 4.4 8.1a4.4 4.4 0 0 1-8.8 0c0-1.9 1.5-4.5 4.4-8.1Z"/>
+        <path class="mk-cell" d="M16 2.5 27.7 9.2v13.5L16 29.5 4.3 22.7V9.2Z"/>
+        <path class="mk-trace" d="M9 21.2l4.5-4.7 3.2 2.7 6.2-6.5"/>
+        <circle class="mk-node" cx="22.9" cy="12.7" r="2.2"/>
       </svg>
-      <span class="brand-text"><b>TIDETRACE</b></span>
+      <span class="brand-text"><b>SENTINELTRACE</b></span>
     </a>
 
     <nav class="mainnav" role="tablist" aria-label="Workspace">
-      <button class="navlink" role="tab" aria-selected="true"  data-view="investigate">Investigate</button>
+      <span class="nav-spacer"></span>
+      <button class="navlink" role="tab" aria-selected="true" data-view="investigate">Investigate</button>
       <button class="navlink" role="tab" aria-selected="false" data-view="drift">Drift</button>
       <button class="navlink" role="tab" aria-selected="false" data-view="vessels">Vessels</button>
+      <button class="navlink" role="tab" aria-selected="false" data-view="stages">Stages</button>
       <button class="navlink" role="tab" aria-selected="false" data-view="method">Method</button>
       <button class="navlink" role="tab" aria-selected="false" data-view="data">Data</button>
+      <button class="navlink" role="tab" aria-selected="false" data-view="dossier">Dossier</button>
+      <a href="/" class="nav-link-home" title="Back to landing page" aria-label="Back to landing page">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2.5 7.5 8 3l5.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 7v5.5h8V7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Home
+      </a>
     </nav>
 
     <div class="appbar-right">
@@ -104,14 +111,24 @@
       </div>
       <p class="ch-meta" id="inc-meta">Pick a scene on the left and run the analysis.</p>
       <div class="ch-coords"><span id="inc-coords">-</span></div>
+
+      <div class="stage-strip-row">
+        <div id="stage-strip" class="stage-strip" role="list" aria-label="Pipeline stage status"></div>
+        <div class="strip-right">
+          <span id="route-badge" class="route-badge" role="status">Route</span>
+        </div>
+      </div>
     </div>
 
     <div id="mapwrap">
       <div id="map"></div>
 
+      <div id="map-status" class="map-status" aria-label="Data status of the inputs on this map"></div>
+
       <details class="mappanel" id="legend" open>
-        <summary>Layers</summary>
+        <summary>Layers &amp; data status</summary>
         <div class="layers" id="layers"></div>
+        <div class="legend-status" id="legend-status"></div>
       </details>
 
       <div class="map-hud" id="readout">lat --.----&nbsp; lon ---.----</div>
@@ -165,6 +182,16 @@
         <div id="detection"><p class="hint">No run yet. Pick a scene and run the analysis.</p></div>
       </section>
 
+      <section class="rail-block">
+        <h2>Inputs <span class="count">real / simulated / missing</span></h2>
+        <div id="input-badges" class="input-badges"></div>
+      </section>
+
+      <section class="rail-block">
+        <h2>Uncertainty</h2>
+        <div id="uncertainty"></div>
+      </section>
+
       <section class="rail-block grow">
         <h2>Potential sources <span class="count" id="susp-count"></span></h2>
         <div id="suspects"><p class="hint">Ranked likelihood for investigation. Not proof of discharge.</p></div>
@@ -178,9 +205,13 @@
 
     <!-- Drift -->
     <div class="view" data-view="drift" hidden>
-      <section class="rail-block grow">
+      <section class="rail-block">
         <h2>Drift reconstruction</h2>
         <div id="origin"><p class="hint">The hindcast has not run.</p></div>
+      </section>
+      <section class="rail-block grow">
+        <h2>Uncertainty and limits</h2>
+        <div id="uncertainty-full"></div>
       </section>
     </div>
 
@@ -189,6 +220,59 @@
       <section class="rail-block grow">
         <h2>Ranked vessels <span class="count" id="vessels-count"></span></h2>
         <div id="vessel-list"><p class="hint">Run the analysis to reconstruct traffic around the origin.</p></div>
+      </section>
+    </div>
+
+    <!-- Stages -->
+    <div class="view" data-view="stages" hidden>
+      <section class="rail-block grow">
+        <h2>Five stages <span class="count">status and reason</span></h2>
+        <div id="stage-detail" class="stage-detail"></div>
+      </section>
+    </div>
+
+    <!-- Dossier -->
+    <div class="view" data-view="dossier" hidden>
+      <section class="rail-block">
+        <h2>Dossier <span class="count">PDF</span></h2>
+        <div id="dossier-card" class="dossier-card"></div>
+        <div class="btnrow" style="margin-top:10px">
+          <a id="dossier-download" class="btn-dl" role="button" aria-disabled="true" aria-label="Download the dossier PDF">Download dossier PDF</a>
+          <button id="dossier-rebuild" class="mini" type="button" title="Re-render the PDF from the current analysis document">Regenerate</button>
+        </div>
+      </section>
+
+      <section class="rail-block">
+        <h2>Verify a downloaded file</h2>
+        <p class="hint" style="margin-top:0">Select the PDF you saved. The page hashes its bytes with the Web Crypto API and compares them with the digest above.</p>
+        <label class="filepick">
+          <span>Choose the dossier PDF</span>
+          <input type="file" id="verify-file" accept="application/pdf,.pdf">
+        </label>
+        <div id="verify-result" class="verify-result" role="status" aria-live="polite">
+          <span class="verify-ic">…</span>
+          <div class="verify-body"><div class="verify-t">No file checked yet</div><div class="verify-d">MATCH means the bytes equal the generated dossier. MISMATCH means they do not.</div></div>
+        </div>
+        <button id="verify-selftest" class="mini" type="button">Self-test: hash a one-byte change</button>
+        <div class="hint">Last computed digest: <code id="verify-hash">not computed</code></div>
+      </section>
+
+      <section class="rail-block grow">
+        <h2>Assumptions</h2>
+        <div id="assumptions-panel"></div>
+        <h2 style="margin-top:14px">Limitations</h2>
+        <div id="limitations-panel"></div>
+      </section>
+
+      <section class="rail-block">
+        <h2>What this report does not establish</h2>
+        <div id="not-established" class="simple-list not-established"></div>
+        <p class="hint">A PDF with a published SHA-256 is an integrity check only: it shows whether the bytes changed after generation.</p>
+      </section>
+
+      <section class="rail-block">
+        <h2>Not available in this build</h2>
+        <div id="unavailable-panel"></div>
       </section>
     </div>
 
@@ -211,11 +295,19 @@
 
     <!-- Data -->
     <div class="view" data-view="data" hidden>
+      <section class="rail-block grow">
+        <h2>Input provenance <span class="count">real / simulated / missing</span></h2>
+        <div id="data-badges" class="input-cards"></div>
+      </section>
+      <section class="rail-block">
+        <h2>Diagnostics</h2>
+        <div id="diagnostics" class="diagnostics"></div>
+      </section>
       <section class="rail-block">
         <h2>Scene provenance</h2>
         <div id="scene-info" class="hint"></div>
       </section>
-      <section class="rail-block grow">
+      <section class="rail-block">
         <h2>System</h2>
         <div id="sysinfo"></div>
       </section>
@@ -225,6 +317,9 @@
 </div>
 
 <script src="/static/vendor/leaflet/leaflet.js"></script>
+<script src="/static/js/adapter.js?v=__V__"></script>
+<script src="/static/js/dossier.js?v=__V__"></script>
+<script src="/static/js/analysis-ui.js?v=__V__"></script>
 <script src="/static/app.js?v=__V__"></script>
 </body>
 </html>

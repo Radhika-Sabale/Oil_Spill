@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from .. import config, pipeline, scenes as scenes_mod
+from ..ais import availability as ais_availability
 from ..geo import raster as raster_mod
 from ..jobs import store as job_store
 from ..schemas import DetectRequest, SceneOut
@@ -29,6 +30,7 @@ def list_scenes() -> List[SceneOut]:
         out.append(SceneOut(
             id=d["id"], title=d["title"], t_sat=d["t_sat"], bounds=d["bounds"],
             centroid=d["centroid"], crs=d["crs"], ais_mode=d["ais_mode"],
+            ais_data=ais_availability.scene_status(s),
             source=d["source"], license=d["license"], notes=d["notes"],
             has_truth_mask=bool(d["mask_path"]), thumbnail=d["thumbnail"],
             exists=d["exists"],

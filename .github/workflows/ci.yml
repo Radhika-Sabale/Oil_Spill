@@ -1,0 +1,88 @@
+name: CI foundation
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Configuration and source validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            pyproject.toml
+            requirements.txt
+
+      - name: Install project, test, and browser test dependencies
+        run: python -m pip install -e ".[recommended,dev,e2e]"
+
+      - name: Check installed dependency consistency
+        run: python -m pip check
+
+      - name: Compile application and scripts
+        run: python -m compileall -q app scripts
+
+      - name: Run M3 unit tests
+        run: >-
+          python -m pytest -q
+          tests/test_advection.py
+          tests/test_m3_hindcast.py
+          tests/test_m3_fields_unit.py
+          tests/test_m3_advection_unit.py
+          tests/test_m3_cone_unit.py
+
+      - name: Run M3 integration tests
+        run: >-
+          python -m pytest -q
+          tests/test_m3_integration.py
+          tests/test_pipeline_offline.py
+          tests/test_norse2019_adapter.py
+          tests/test_norse2019_pipeline.py
+
+      - name: Install Chromium for browser tests
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run M3 browser E2E tests
+        env:
+          TIDETRACE_E2E_ARTIFACTS: ${{ runner.temp }}/tidetrace-e2e-artifacts
+        run: python -m pytest -q tests/e2e
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: m3-browser-evidence
+          path: ${{ runner.temp }}/tidetrace-e2e-artifacts
+          if-no-files-found: ignore
+
+      - name: Run informational M3 performance smoke
+        run: >-
+          python benchmarks/benchmark_m3.py --smoke
+          --output "${{ runner.temp }}/m3-performance-smoke.json"
+
+      - name: Upload M3 performance measurements
+        uses: actions/upload-artifact@v7
+        with:
+          name: m3-performance-smoke
+          path: ${{ runner.temp }}/m3-performance-smoke.json
+          if-no-files-found: error

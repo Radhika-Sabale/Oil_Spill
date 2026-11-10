@@ -16,6 +16,29 @@ from ..geo.geometry import buffer_ring_km, hull_ring, ring_area_km2
 from .advection import EnsembleRun
 
 
+def _validate_run(run: EnsembleRun) -> Tuple[np.ndarray, np.ndarray]:
+    """Reject incomplete trajectory arrays before producing spatial summaries."""
+    lon = np.asarray(run.lon, dtype=float)
+    lat = np.asarray(run.lat, dtype=float)
+    n_times = len(run.times)
+    if (lon.ndim != 2 or lat.shape != lon.shape or lon.shape[0] != n_times
+            or lon.shape[0] == 0 or lon.shape[1] == 0):
+        raise ValueError("trajectory must have matching non-empty (time, particle) coordinates")
+    if not np.isfinite(lon).all() or not np.isfinite(lat).all():
+        raise ValueError("trajectory coordinates must be finite")
+    if n_times > 1:
+        deltas = [(right - left).total_seconds()
+                  for left, right in zip(run.times, run.times[1:])]
+        if not (all(delta > 0 for delta in deltas)
+                or all(delta < 0 for delta in deltas)):
+            raise ValueError("trajectory timestamps must be strictly monotonic")
+    for name in ("spread_km", "mean_lon", "mean_lat"):
+        values = np.asarray(getattr(run, name), dtype=float)
+        if values.shape != (n_times,) or not np.isfinite(values).all():
+            raise ValueError("trajectory %s must contain one finite value per timestamp" % name)
+    return lon, lat
+
+
 def percentile_ring(lons: np.ndarray, lats: np.ndarray, pct: float = 90.0) -> List[Tuple[float, float]]:
     """Hull of the particles inside the `pct` distance percentile of the median.
 
@@ -101,9 +124,16 @@ def kde_hdr_ring(lons: np.ndarray, lats: np.ndarray,
 def swept_cone(run: EnsembleRun, step: int = 1, pct: float = 90.0,
                start: int = 0, end: Optional[int] = None) -> List[Tuple[float, float]]:
     """Hull of every particle position between two indices: the drift cone."""
-    end = run.n_steps - 1 if end is None else int(end)
-    lo = run.lon[start:end + 1:step].ravel()
-    la = run.lat[start:end + 1:step].ravel()
+    lon, lat = _validate_run(run)
+    step = int(step)
+    start = int(start)
+    end = lon.shape[0] - 1 if end is None else int(end)
+    if step <= 0:
+        raise ValueError("step must be positive")
+    if start < 0 or end < start or end >= lon.shape[0]:
+        raise ValueError("trajectory index range is invalid")
+    lo = lon[start:end + 1:step].ravel()
+    la = lat[start:end + 1:step].ravel()
     return percentile_ring(lo, la, pct=pct)
 
 
@@ -122,6 +152,9 @@ def origin_zone(run: EnsembleRun, index: int, buffer_km: float = None,
     Returns the ring, its centre, and the honest radius so the UI can label the
     zone instead of implying a point fix.
     """
+    _validate_run(run)
+    if index < 0 or index >= len(run.times):
+        raise ValueError("origin index is outside the trajectory")
     buffer_km = config.ORIGIN_BUFFER_KM if buffer_km is None else float(buffer_km)
     if method == "kde_hdr":
         ring = kde_hdr_ring(run.lon[index], run.lat[index], pct=pct)
@@ -150,9 +183,10 @@ def origin_zone(run: EnsembleRun, index: int, buffer_km: float = None,
 
 def envelopes_by_hour(run: EnsembleRun, pct: float = 90.0) -> List[Dict[str, Any]]:
     """Per hour envelope, so the UI time slider can walk the cone."""
+    lon, lat = _validate_run(run)
     out: List[Dict[str, Any]] = []
     for i in range(run.n_steps):
-        ring = percentile_ring(run.lon[i], run.lat[i], pct=pct)
+        ring = percentile_ring(lon[i], lat[i], pct=pct)
         out.append({
             "index": i,
             "t": run.times[i].isoformat(),
@@ -166,9 +200,10 @@ def envelopes_by_hour(run: EnsembleRun, pct: float = 90.0) -> List[Dict[str, Any
 
 def threatened_bbox(run: EnsembleRun) -> Dict[str, float]:
     """Bounding box the forecast ensemble can reach, for the threat readout."""
+    lon, lat = _validate_run(run)
     return {
-        "west": float(np.min(run.lon)),
-        "south": float(np.min(run.lat)),
-        "east": float(np.max(run.lon)),
-        "north": float(np.max(run.lat)),
+        "west": float(np.min(lon)),
+        "south": float(np.min(lat)),
+        "east": float(np.max(lon)),
+        "north": float(np.max(lat)),
     }

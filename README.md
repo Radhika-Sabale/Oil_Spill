@@ -792,3 +792,5 @@ archive.
 
 Data licences are listed under [Datasets](#datasets) and must be cited
 wherever the outputs are shown.
+
+- M4 Stage 4 forensics: see docs/M4_STAGE4.md

@@ -10,6 +10,8 @@ import pytest
 
 from scripts import norse2019_adapter as adapter
 
+pytestmark = pytest.mark.real_data
+
 
 DATA = Path(__file__).resolve().parents[1] / "data" / "norse2019_forcing"
 T_SAT = datetime(2019, 6, 12, 12, tzinfo=timezone.utc)

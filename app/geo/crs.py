@@ -9,6 +9,7 @@ fallback keeps the "optional library" rule honest.
 from __future__ import annotations
 
 import math
+from functools import lru_cache
 from typing import Tuple
 
 import numpy as np
@@ -23,6 +24,19 @@ except Exception:  # pragma: no cover - exercised only on minimal installs
 R_EARTH = 6371008.8  # mean Earth radius, metres (IUGG)
 
 
+@lru_cache(maxsize=1024)
+def _pyproj_transformers(lat0: float, lon0: float):
+    """Reuse exact-origin transforms without allowing the cache to grow forever."""
+    crs = CRS.from_proj4(
+        f"+proj=aeqd +lat_0={lat0} +lon_0={lon0} "
+        "+x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
+    )
+    return (
+        Transformer.from_crs("EPSG:4326", crs, always_xy=True),
+        Transformer.from_crs(crs, "EPSG:4326", always_xy=True),
+    )
+
+
 class LocalAEQD:
     """Azimuthal equidistant frame pinned at (lat0, lon0)."""
 
@@ -32,12 +46,7 @@ class LocalAEQD:
         self._fwd = None
         self._inv = None
         if _HAVE_PYPROJ:
-            crs = CRS.from_proj4(
-                f"+proj=aeqd +lat_0={self.lat0} +lon_0={self.lon0} "
-                f"+x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs"
-            )
-            self._fwd = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
-            self._inv = Transformer.from_crs(crs, "EPSG:4326", always_xy=True)
+            self._fwd, self._inv = _pyproj_transformers(self.lat0, self.lon0)
 
     # -- forward ------------------------------------------------------------
     def to_m(self, lon, lat):

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -37,6 +38,7 @@ class SceneOut(BaseModel):
     centroid: List[float]
     crs: str
     ais_mode: str
+    ais_data: Dict[str, Any] = Field(default_factory=dict)
     source: str = ""
     license: str = ""
     notes: str = ""
@@ -52,6 +54,27 @@ class DetectRequest(BaseModel):
     render_overlays: bool = True
 
 
+def _validate_iso_timestamp(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return value
+    try:
+        datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except (AttributeError, ValueError) as exc:
+        raise ValueError("timestamp must be ISO 8601") from exc
+    return value
+
+
+def _validate_lonlat_pair(value: List[float], label: str) -> List[float]:
+    if len(value) != 2:
+        raise ValueError("%s must contain [longitude, latitude]" % label)
+    lon, lat = value
+    if not math.isfinite(lon) or not math.isfinite(lat):
+        raise ValueError("%s coordinates must be finite" % label)
+    if not -180.0 <= lon <= 180.0 or not -90.0 <= lat <= 90.0:
+        raise ValueError("%s coordinates must be within longitude/latitude bounds" % label)
+    return value
+
+
 class DriftRequest(BaseModel):
     job_id: Optional[str] = None
     centroid: Optional[List[float]] = Field(
@@ -59,11 +82,32 @@ class DriftRequest(BaseModel):
     polygon: Optional[List[List[float]]] = Field(
         default=None, description="optional slick ring as [[lon, lat], ...]")
     t_sat: Optional[str] = None
-    hours_back: int = config.HINDCAST_H
-    hours_fwd: int = config.FORECAST_H
-    ensemble_n: int = config.ENSEMBLE_N
+    hours_back: int = Field(default=config.HINDCAST_H, ge=1)
+    hours_fwd: int = Field(default=config.FORECAST_H, ge=1)
+    ensemble_n: int = Field(default=config.ENSEMBLE_N, ge=1)
     scene_id: Optional[str] = None
     metocean_profile: Literal["default", "norse2019"] = "default"
+
+    @field_validator("centroid")
+    @classmethod
+    def _valid_centroid(cls, value):
+        return None if value is None else _validate_lonlat_pair(value, "centroid")
+
+    @field_validator("polygon")
+    @classmethod
+    def _valid_polygon(cls, value):
+        if value is None:
+            return None
+        if len(value) < 4:
+            raise ValueError("polygon must contain at least four [longitude, latitude] points")
+        for point in value:
+            _validate_lonlat_pair(point, "polygon")
+        return value
+
+    @field_validator("t_sat")
+    @classmethod
+    def _valid_timestamp(cls, value):
+        return _validate_iso_timestamp(value)
 
 
 class AttributeRequest(BaseModel):
@@ -80,11 +124,11 @@ class AttributeRequest(BaseModel):
 class RunRequest(BaseModel):
     scene_id: Optional[str] = None
     t_sat: Optional[str] = None
-    hindcast_hours: int = config.HINDCAST_H
-    forecast_hours: int = config.FORECAST_H
-    search_radius_km: float = config.SEARCH_RADIUS_KM
-    origin_window_hours: float = config.ORIGIN_WINDOW_H
-    ensemble_n: int = config.ENSEMBLE_N
+    hindcast_hours: int = Field(default=config.HINDCAST_H, ge=1)
+    forecast_hours: int = Field(default=config.FORECAST_H, ge=1)
+    search_radius_km: float = Field(default=config.SEARCH_RADIUS_KM, gt=0, allow_inf_nan=False)
+    origin_window_hours: float = Field(default=config.ORIGIN_WINDOW_H, gt=0, allow_inf_nan=False)
+    ensemble_n: int = Field(default=config.ENSEMBLE_N, ge=1)
     prefer_model: bool = True
     threshold_db: Optional[float] = None
     top_n: int = 10
@@ -93,6 +137,11 @@ class RunRequest(BaseModel):
     # The caller may name the run so it can poll progress while the synchronous
     # request is still open. Constrained because it becomes a filename.
     job_id: Optional[str] = Field(default=None, pattern=r"^job_[A-Za-z0-9_-]{1,48}$")
+
+    @field_validator("t_sat")
+    @classmethod
+    def _valid_timestamp(cls, value):
+        return _validate_iso_timestamp(value)
 
 
 class InjectRequest(BaseModel):
