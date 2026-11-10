@@ -2064,7 +2064,7 @@
     });
   }
 
-  /* ---------------------------------------------------- NuGen AI Assistant */
+  /* ------------------------------------------------------ NuGen Assistant */
   function initAssistant() {
     var chatLog = $("assistant-chat-log");
     var input = $("assistant-input");
@@ -2181,7 +2181,7 @@
           }
           if (alertBox) {
             alertBox.hidden = false;
-            alertBox.textContent = "AI Assistant is not configured. Add your NuGen API key to the backend environment.";
+            alertBox.textContent = "NuGen Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.";
           }
         } else {
           if (statusInd) {
@@ -2245,10 +2245,10 @@
                { signal: ctrl ? ctrl.signal : undefined })
         .then(function (res) {
           if (res.status === "unconfigured") {
-            appendMessage("assistant", res.reply || "AI Assistant is not configured. Add your NuGen API key to the backend environment.", "NuGen", true);
+            appendMessage("assistant", res.reply || "NuGen Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.", "NuGen", true);
             if (alertBox) {
               alertBox.hidden = false;
-              alertBox.textContent = "AI Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.";
+              alertBox.textContent = "NuGen Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.";
             }
             if (statusInd) {
               statusInd.textContent = "Unconfigured";

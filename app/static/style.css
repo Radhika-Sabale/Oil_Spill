@@ -141,7 +141,15 @@ html, body {
   font-size: 13px; font-weight: 700; letter-spacing: .13em; color: var(--ink);
 }
 
-.mainnav { display: flex; gap: 2px; }
+/* Eight tabs, one of them two words: keep each on one line and let the row
+   scroll rather than wrap under the 52px bar and get clipped. */
+.mainnav {
+  display: flex; gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mainnav::-webkit-scrollbar { display: none; }
 .navlink {
   appearance: none; background: none; border: none; cursor: pointer;
   padding: 17px 12px 15px;
@@ -151,6 +159,8 @@ html, body {
   color: var(--ink-3);
   border-bottom: 2px solid transparent;
   border-radius: 5px 5px 0 0;
+  white-space: nowrap;
+  flex: none;
   transition: color .15s ease, background .15s ease;
 }
 .navlink:hover { color: var(--ink-2); background: color-mix(in srgb, var(--ink) 5%, transparent); }
@@ -700,6 +710,9 @@ label.probe input { accent-color: var(--accent); margin-top: 1px; flex: none; }
   :root { --rail-l: 190px; --rail-r: 264px; }
   .search input { width: 150px; }
   .strip { height: 168px; }
+  /* Eight tabs, one of them two words. Tighter padding keeps every tab on
+     screen at 1280 instead of pushing the last one behind a scroll. */
+  .navlink { padding-left: 8px; padding-right: 8px; letter-spacing: .08em; }
 }
 @media (max-width: 1080px) {
   #app { grid-template-columns: 1fr; grid-template-rows: 52px auto minmax(320px, 1fr) auto; }

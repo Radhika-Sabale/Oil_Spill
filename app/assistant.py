@@ -208,7 +208,7 @@ def _looks_like_html(text: str) -> bool:
 
 
 def get_status() -> Dict[str, Any]:
-    """Return status and configuration of the NuGen AI Assistant."""
+    """Return status and configuration of the NuGen Assistant."""
     configured = bool(config.NUGEN_API_KEY)
     return {
         "configured": configured,
@@ -252,7 +252,7 @@ def chat(
         return {
             "status": "unconfigured",
             "code": "unconfigured",
-            "reply": ("AI Assistant is not configured. Add NUGEN_API_KEY to the "
+            "reply": ("NuGen Assistant is not configured. Add NUGEN_API_KEY to the "
                       "backend environment (.env) and restart the server."),
             "experimental": True,
             "elapsed_ms": int((time.perf_counter() - started) * 1000),

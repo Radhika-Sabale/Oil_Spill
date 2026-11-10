@@ -87,9 +87,9 @@ recomputed and the backend is untouched.
 - A PDF plus a checksum is an integrity check. It does not establish that a
   vessel released oil.
 
-## AI Assistant (NuGen)
+## NuGen Assistant
 
-The console's **AI Assistant** tab answers questions about method and domain:
+The console's **NuGen Assistant** tab answers questions about method and domain:
 SAR look-alikes, drift physics, attribution reasoning. It is the one outbound
 call in the product and it is fenced off from everything that produces a
 finding:
