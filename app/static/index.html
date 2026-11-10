@@ -38,7 +38,7 @@
       <button class="navlink" role="tab" aria-selected="false" data-view="method">Method</button>
       <button class="navlink" role="tab" aria-selected="false" data-view="data">Data</button>
       <button class="navlink" role="tab" aria-selected="false" data-view="dossier">Dossier</button>
-      <button class="navlink" role="tab" aria-selected="false" data-view="assistant">AI Assistant</button>
+      <button class="navlink" role="tab" aria-selected="false" data-view="assistant">NuGen Assistant</button>
       <a href="/" class="nav-link-home" title="Back to landing page" aria-label="Back to landing page">
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M2.5 7.5 8 3l5.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 7v5.5h8V7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
         Home
@@ -277,10 +277,10 @@
       </section>
     </div>
 
-    <!-- AI Assistant -->
+    <!-- NuGen Assistant -->
     <div class="view" data-view="assistant" hidden>
       <section class="rail-block">
-        <h2>SentinelTrace AI Intelligence <span class="count">NuGen</span></h2>
+        <h2>NuGen Assistant <span class="count">Llama-3.2-3B</span></h2>
         <div class="assistant-card">
           <div class="assistant-meta">
             <span class="badge badge-real"><span class="badge-ic">●</span> NuGen Domain-Aligned</span>
@@ -298,7 +298,13 @@
       </section>
 
       <section class="rail-block grow assistant-chat-section">
-        <h2>Conversation <span class="count" id="assistant-status-indicator">Ready</span></h2>
+        <h2>
+          Conversation
+          <span class="assistant-head-actions">
+            <span class="count" id="assistant-status-indicator">Ready</span>
+            <button type="button" class="mini" id="assistant-clear" title="Clear this conversation">Clear</button>
+          </span>
+        </h2>
         <div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-live="polite">
           <div class="chat-bubble ai">
             <div class="chat-bubble-author">SentinelTrace AI <span class="chat-badge">Domain Model</span></div>

@@ -71,11 +71,12 @@
       });
   }
 
-  function postJSON(path, body) {
+  function postJSON(path, body, opts) {
     return fetch(API + path, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body || {})
+      body: JSON.stringify(body || {}),
+      signal: (opts || {}).signal
     }).then(function (r) {
       if (!r.ok) return r.text().then(function (t) { throw new Error(r.status + " " + t.slice(0, 400)); });
       return r.json();
@@ -2024,7 +2025,12 @@
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       var tag = (e.target.tagName || "").toLowerCase();
       var typing = tag === "input" || tag === "select" || tag === "textarea";
-      if (e.key === "Enter" && !$("run").disabled) {
+      // The assistant panel owns its own keys. Without this, Enter on a
+      // starter chip (or on any focused input) started a pipeline run: a
+      // model question would kick off a detection job behind the chat.
+      var inAssistant = e.target.closest && e.target.closest('[data-view="assistant"]');
+      if (inAssistant) return;
+      if (e.key === "Enter" && !typing && !$("run").disabled) {
         e.preventDefault();
         runPipeline();
       } else if (!typing && (e.key === " " || e.key === "k")) {
@@ -2058,7 +2064,7 @@
     });
   }
 
-  /* ---------------------------------------------------- NuGen AI Assistant */
+  /* ------------------------------------------------------ NuGen Assistant */
   function initAssistant() {
     var chatLog = $("assistant-chat-log");
     var input = $("assistant-input");
@@ -2069,6 +2075,102 @@
     if (!chatLog || !input || !form) return;
 
     var history = [];
+    var busy = false;
+    // Turns sent upstream. The transcript keeps every bubble; only the last
+    // few turns are resent, because the whole history goes with each call and
+    // an unbounded session eventually hits the model's context limit.
+    var MAX_SENT = 10;
+    var CLIENT_TIMEOUT_MS = 20000;
+    var greeting = chatLog.querySelector(".chat-bubble");
+
+    /* Replies come from a remote model, so they are untrusted text. Bold, code
+       and bullet lines are built as elements; everything else stays literal.
+       No innerHTML anywhere in this panel. */
+    function renderRich(body, text) {
+      var lines = String(text == null ? "" : text).split(/\r?\n/);
+      var list = null;
+
+      function inline(str) {
+        var frag = document.createDocumentFragment();
+        var re = /(\*\*[^*]+\*\*|`[^`]+`)/g, last = 0, m;
+        while ((m = re.exec(str)) !== null) {
+          if (m.index > last) frag.appendChild(document.createTextNode(str.slice(last, m.index)));
+          var tok = m[0], node;
+          if (tok.charAt(0) === "`") {
+            node = document.createElement("code");
+            node.textContent = tok.slice(1, -1);
+          } else {
+            node = document.createElement("strong");
+            node.textContent = tok.slice(2, -2);
+          }
+          frag.appendChild(node);
+          last = m.index + tok.length;
+        }
+        if (last < str.length) frag.appendChild(document.createTextNode(str.slice(last)));
+        return frag;
+      }
+
+      lines.forEach(function (raw) {
+        var line = raw.trim();
+        if (!line) { list = null; return; }
+        var bullet = /^(?:[-*•]|\d+[.)])\s+(.*)$/.exec(line);
+        if (bullet) {
+          if (!list) { list = document.createElement("ul"); body.appendChild(list); }
+          var li = document.createElement("li");
+          li.appendChild(inline(bullet[1]));
+          list.appendChild(li);
+          return;
+        }
+        list = null;
+        var p = document.createElement("p");
+        p.appendChild(inline(line));
+        body.appendChild(p);
+      });
+
+      if (!body.firstChild) body.textContent = "(empty reply)";
+    }
+
+    function showTyping() {
+      hideTyping();
+      var bubble = el("div", "chat-bubble ai typing");
+      bubble.id = "assistant-typing";
+      var author = el("div", "chat-bubble-author");
+      author.appendChild(el("span", "", "SentinelTrace AI"));
+      bubble.appendChild(author);
+      var body = el("div", "chat-bubble-body");
+      body.appendChild(el("span", "typing-dots", "●●●"));
+      body.appendChild(el("span", "typing-label", " thinking"));
+      bubble.appendChild(body);
+      chatLog.appendChild(bubble);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function hideTyping() {
+      var node = $("assistant-typing");
+      if (node && node.parentNode) node.parentNode.removeChild(node);
+    }
+
+    function setBusy(on) {
+      busy = on;
+      input.disabled = on;
+      if (sendBtn) sendBtn.disabled = on;
+      Array.prototype.forEach.call(document.querySelectorAll(".starter-chip"), function (chip) {
+        chip.disabled = on;
+      });
+    }
+
+    function clearChat() {
+      history = [];
+      hideTyping();
+      Array.prototype.slice.call(chatLog.querySelectorAll(".chat-bubble")).forEach(function (b) {
+        if (b.parentNode) b.parentNode.removeChild(b);
+      });
+      if (greeting) chatLog.appendChild(greeting.cloneNode(true));
+      if (alertBox) alertBox.hidden = true;
+      if (statusInd) { statusInd.textContent = "Ready"; statusInd.style.color = ""; }
+      setBusy(false);
+      input.focus();
+    }
 
     function updateStatus() {
       getJSON("/api/assistant/status").then(function (st) {
@@ -2079,7 +2181,7 @@
           }
           if (alertBox) {
             alertBox.hidden = false;
-            alertBox.textContent = "AI Assistant is not configured. Add your NuGen API key to the backend environment.";
+            alertBox.textContent = "NuGen Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.";
           }
         } else {
           if (statusInd) {
@@ -2109,46 +2211,62 @@
       bubble.appendChild(author);
 
       var body = el("div", "chat-bubble-body");
-      if (isError) body.style.color = "var(--warn)";
-      body.textContent = text;
+      if (isError) {
+        body.style.color = "var(--warn)";
+        body.textContent = text;
+      } else if (role === "user") {
+        body.textContent = text;
+      } else {
+        renderRich(body, text);
+      }
       bubble.appendChild(body);
 
       chatLog.appendChild(bubble);
       chatLog.scrollTop = chatLog.scrollHeight;
+      return bubble;
     }
 
     function send(promptText) {
       var text = (promptText || input.value || "").trim();
-      if (!text) return;
+      if (!text || busy) return;
 
+      setBusy(true);
       appendMessage("user", text);
       history.push({ role: "user", content: text });
       input.value = "";
-      input.disabled = true;
-      if (sendBtn) sendBtn.disabled = true;
-      if (statusInd) statusInd.textContent = "Thinking...";
+      if (statusInd) { statusInd.textContent = "Thinking…"; statusInd.style.color = ""; }
+      showTyping();
 
-      postJSON("/api/assistant/chat", { messages: history })
+      var ctrl = window.AbortController ? new AbortController() : null;
+      var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, CLIENT_TIMEOUT_MS);
+
+      postJSON("/api/assistant/chat",
+               { messages: history.slice(-MAX_SENT) },
+               { signal: ctrl ? ctrl.signal : undefined })
         .then(function (res) {
           if (res.status === "unconfigured") {
-            appendMessage("assistant", res.reply || "AI Assistant is not configured. Add your NuGen API key to the backend environment.", "NuGen", true);
+            appendMessage("assistant", res.reply || "NuGen Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.", "NuGen", true);
             if (alertBox) {
               alertBox.hidden = false;
-              alertBox.textContent = "AI Assistant is not configured. Add your NuGen API key to the backend environment.";
+              alertBox.textContent = "NuGen Assistant is not configured. Add NUGEN_API_KEY to .env and restart the server.";
             }
             if (statusInd) {
               statusInd.textContent = "Unconfigured";
               statusInd.style.color = "var(--warn)";
             }
           } else if (res.status === "error") {
-            appendMessage("assistant", (res.reply || "An error occurred.") + (res.error_detail ? "\n[" + res.error_detail + "]" : ""), "Error", true);
+            // The sentence is written for the operator; the provider detail is
+            // kept as a tooltip instead of being dumped into the transcript.
+            var errBubble = appendMessage("assistant", res.reply || "An error occurred.", "Error", true);
+            if (errBubble && res.error_detail) errBubble.title = res.error_detail;
             if (statusInd) {
-              statusInd.textContent = "Error";
+              statusInd.textContent = res.code === "rate_limited" ? "Rate limited" : "Error";
               statusInd.style.color = "var(--bad)";
             }
           } else {
-            appendMessage("assistant", res.reply || "No response received.", "NuGen Llama-3.2");
-            history.push({ role: "assistant", content: res.reply });
+            var secs = res.elapsed_ms ? (res.elapsed_ms / 1000).toFixed(1) + "s" : "NuGen";
+            appendMessage("assistant", res.reply || "No response received.", "NuGen · " + secs);
+            history.push({ role: "assistant", content: res.reply || "" });
             if (statusInd) {
               statusInd.textContent = "Ready";
               statusInd.style.color = "";
@@ -2156,15 +2274,19 @@
           }
         })
         .catch(function (err) {
-          appendMessage("assistant", "Request failed: " + (err.message || String(err)), "Failed", true);
+          var aborted = err && (err.name === "AbortError");
+          appendMessage("assistant", aborted
+            ? "No answer within " + (CLIENT_TIMEOUT_MS / 1000) + "s. The assistant timed out; ask again."
+            : "Request failed: " + (err && err.message ? err.message : String(err)), "Failed", true);
           if (statusInd) {
             statusInd.textContent = "Error";
             statusInd.style.color = "var(--bad)";
           }
         })
         .then(function () {
-          input.disabled = false;
-          if (sendBtn) sendBtn.disabled = false;
+          clearTimeout(timer);
+          hideTyping();
+          setBusy(false);
           input.focus();
         });
     }
@@ -2188,6 +2310,9 @@
         send(q);
       });
     });
+
+    var clearBtn = $("assistant-clear");
+    if (clearBtn) clearBtn.addEventListener("click", clearChat);
 
     updateStatus();
   }

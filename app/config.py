@@ -177,10 +177,25 @@ ALLOW_SELFTEST_SCENES = _b("TIDETRACE_ALLOW_SELFTEST_SCENES", False)
 CLASS_NAMES = {0: "sea", 1: "look_alike", 2: "mineral_oil"}
 
 # NuGen AI Domain Intelligence Assistant (Demo feature)
+#
+# This is the one outbound call in the served application, and it is strictly
+# supplementary: it answers questions about method and domain, and never feeds
+# a mask, a drift vector, a score or an attribution. The key stays in the
+# backend process; no browser response ever carries it.
 NUGEN_API_KEY = os.environ.get("NUGEN_API_KEY", "").strip()
 NUGEN_MODEL_ID = os.environ.get("NUGEN_MODEL_ID", "model_01m72rrs9crb43tz").strip()
 NUGEN_API_URL = os.environ.get("NUGEN_API_URL", "https://api.nugen.in/api/v3/inference/chat/completions").strip()
 NUGEN_BASE_MODEL = "Llama-3.2-3B-Instruct"
+# A judged demo has a human waiting in front of it. Twenty-five seconds of
+# spinner reads as a crash, so the budget is deliberately short: fail fast,
+# say why, and let the operator ask again. Measured latency on the demo network
+# is ~3s for a 120-token answer, so 12s leaves room for bad conference wifi.
+NUGEN_TIMEOUT_S = _f("NUGEN_TIMEOUT_S", 12.0)
+# Upstream context is capped by us, not by the model's window: a long session
+# is resent in full on every turn, so an unbounded history eventually trips the
+# token limit mid-demo and every later turn fails.
+NUGEN_MAX_HISTORY = _i("NUGEN_MAX_HISTORY", 12)
+NUGEN_MAX_TOKENS = _i("NUGEN_MAX_TOKENS", 400)
 
 UI_TITLE = "NTRO Oil Spill Attribution Console"
 PROJECT_CODENAME = "TideTrace"
@@ -218,6 +233,7 @@ def as_dict() -> dict:
         "version": VERSION,
         "sih_id": SIH_ID,
         "nugen_configured": bool(NUGEN_API_KEY),
+        "nugen_timeout_s": NUGEN_TIMEOUT_S,
         "nugen_model_id": NUGEN_MODEL_ID,
         "nugen_base_model": NUGEN_BASE_MODEL,
     }
