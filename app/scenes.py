@@ -64,7 +64,8 @@ class Scene:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        d["exists"] = Path(self.sar_path).exists()
+        resolved = resolve_path(self.sar_path)
+        d["exists"] = Path(resolved).exists() if resolved else False
         return d
 
 

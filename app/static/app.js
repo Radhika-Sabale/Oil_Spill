@@ -1258,7 +1258,7 @@
   }
 
   function runPipeline() {
-    if (!state.scene) return;
+    if (!state.scene || state.scene.exists === false) return;
     $("busy").classList.add("on");
     $("busytext").textContent = "Starting";
     $("run").disabled = true;
@@ -1384,15 +1384,40 @@
   function renderSceneInfo(scene) {
     var box = $("scene-info");
     box.innerHTML = "";
-    if (!scene) { box.textContent = "No scenes indexed."; return; }
+    if (!scene) {
+      box.textContent = "No scenes indexed.";
+      if ($("run")) $("run").disabled = true;
+      return;
+    }
     box.appendChild(el("div", null, "Acquired " + utc(scene.t_sat)));
     box.appendChild(el("div", null, "Bounds " + scene.bounds.map(function (v) {
       return v.toFixed(3);
     }).join(", ")));
+    var aisData = scene.ais_data || {};
     box.appendChild(el("div", null, "CRS " + scene.crs + "  |  AIS " +
-      (scene.ais_mode === "real" ? "real MarineCadastre" : "simulated traffic")));
+      (aisData.label || "availability not verified")));
     if (scene.source) box.appendChild(el("div", null, scene.source));
     if (scene.notes) box.appendChild(el("div", "muted", scene.notes));
+
+    if (scene.exists === false) {
+      var preset = scene.id === "arabian_sea_mumbai_offshore" ? "arabian_sea" :
+                   scene.id === "gom_mc20_chronic_slick" ? "mc20" :
+                   scene.id === "caspian_baku_seeps" ? "caspian_baku" :
+                   scene.id === "santa_barbara_seeps" ? "santa_barbara" : scene.id;
+      var warn = el("div", "warn-banner",
+        "⚠️ SAR GeoTIFF missing on disk. Run: python scripts/fetch_sentinel1_scene.py --preset " + preset);
+      box.appendChild(warn);
+      if ($("run")) {
+        $("run").disabled = true;
+        $("run").title = "SAR GeoTIFF is missing on disk.";
+      }
+    } else {
+      if ($("run")) {
+        $("run").disabled = false;
+        $("run").title = "";
+      }
+    }
+
     var on = el("div", "muted", "");
     on.id = "optical-note";
     box.appendChild(on);
@@ -1846,9 +1871,14 @@
       row.dataset.id = sc.id;
       row.setAttribute("aria-current", state.scene && state.scene.id === sc.id ? "true" : "false");
       row.appendChild(el("span", "nm", sc.title));
-      var real = sc.ais_mode === "real";
-      row.appendChild(el("span", "ais " + (real ? "real" : "sim"),
-        real ? "recorded AIS" : "simulated AIS"));
+      var aisData = sc.ais_data || {};
+      var aisStatus = aisData.status || "unverified";
+      var real = aisStatus.indexOf("real_") === 0 || aisStatus === "mixed_sources";
+      var simulated = aisStatus.indexOf("simulated_") === 0 || aisStatus === "mixed_sources";
+      var aisLabel = aisData.label || "AIS status unverified";
+      if (sc.exists === false) aisLabel += " · SAR missing";
+      row.appendChild(el("span", "ais " + (real ? "real" : simulated ? "sim" : "missing") +
+        (sc.exists === false ? " missing" : ""), aisLabel));
       row.appendChild(el("span", "dt", utc(sc.t_sat).replace(" UTC", "") + " UTC"));
       row.addEventListener("click", function () { selectScene(sc.id); });
       box.appendChild(row);

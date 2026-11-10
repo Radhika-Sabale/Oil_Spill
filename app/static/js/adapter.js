@@ -182,8 +182,13 @@
     var s4cands = stage4.candidates || [];
     var radiometry = metrics.radiometry || {};
     var aisSources = attr.sources_used || (attr.funnel || {}).sources_used || {};
-    var aisSimulated = scene.ais_mode === "simulated" ||
+    var aisData = attr.ais_data || scene.ais_data || {};
+    var aisStatus = aisData.status || "";
+    var aisSimulated = aisStatus.indexOf("simulated_") === 0 ||
       Object.keys(aisSources).some(function (k) { return /synthetic|simulated|selftest/i.test(k); });
+    var aisReal = aisStatus.indexOf("real_") === 0 || aisStatus === "mixed_sources" ||
+      Object.keys(aisSources).some(function (k) { return !/synthetic|simulated|selftest/i.test(k); });
+    var aisKind = aisSimulated ? "simulated" : aisReal ? "real" : "missing";
     var h3 = stage4.h3 || {};
     var baseline = metrics.detector && metrics.detector !== "unet";
 
@@ -255,9 +260,9 @@
     inputs.push({
       id: "ais", label: "AIS vessel tracks", usedBy: "Attribute",
       provenance: !Object.keys(aisSources).length
-        ? badge(aisSimulated ? "simulated" : "missing", null, null,
-          suspects.length ? "Track source not reported by the job document." : "No AIS rows were used for this case.")
-        : badge(aisSimulated ? "simulated" : "real",
+        ? badge(aisKind, null, null,
+          aisData.label || (suspects.length ? "Track source not reported by the job document." : "No AIS rows were used for this case."))
+        : badge(aisKind,
           Object.keys(aisSources).sort().join(", "),
           (stage4.parameters && stage4.parameters.window_start_ts
             ? isoFromTs(stage4.parameters.window_start_ts) : null),

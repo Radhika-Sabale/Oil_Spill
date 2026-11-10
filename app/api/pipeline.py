@@ -34,8 +34,13 @@ def run(req: RunRequest) -> Dict[str, Any]:
         )
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from exc
-    except FileNotFoundError as exc:
-        raise HTTPException(404, str(exc)) from exc
+    except (FileNotFoundError, OSError) as exc:
+        raise HTTPException(
+            404,
+            f"Scene raster file is missing from data/sar/. "
+            f"To fetch this Sentinel-1 scene, run: "
+            f"python scripts/fetch_sentinel1_scene.py --preset {req.scene_id}"
+        ) from exc
     except core.NorseForcingIntegrationError as exc:
         raise HTTPException(422, str(exc)) from exc
 
