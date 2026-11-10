@@ -2058,6 +2058,140 @@
     });
   }
 
+  /* ---------------------------------------------------- NuGen AI Assistant */
+  function initAssistant() {
+    var chatLog = $("assistant-chat-log");
+    var input = $("assistant-input");
+    var form = $("assistant-form");
+    var alertBox = $("assistant-alert");
+    var statusInd = $("assistant-status-indicator");
+    var sendBtn = $("assistant-send");
+    if (!chatLog || !input || !form) return;
+
+    var history = [];
+
+    function updateStatus() {
+      getJSON("/api/assistant/status").then(function (st) {
+        if (!st.configured) {
+          if (statusInd) {
+            statusInd.textContent = "Unconfigured";
+            statusInd.style.color = "var(--warn)";
+          }
+          if (alertBox) {
+            alertBox.hidden = false;
+            alertBox.textContent = "AI Assistant is not configured. Add your NuGen API key to the backend environment.";
+          }
+        } else {
+          if (statusInd) {
+            statusInd.textContent = "Ready";
+            statusInd.style.color = "";
+          }
+          if (alertBox) {
+            alertBox.hidden = true;
+          }
+        }
+      }).catch(function () {
+        if (statusInd) {
+          statusInd.textContent = "Offline";
+          statusInd.style.color = "var(--ink-3)";
+        }
+      });
+    }
+
+    function appendMessage(role, text, badgeText, isError) {
+      var bubble = el("div", "chat-bubble " + (role === "user" ? "user" : "ai"));
+      var author = el("div", "chat-bubble-author");
+      var nameSpan = el("span", "", role === "user" ? "Operator" : "SentinelTrace AI");
+      author.appendChild(nameSpan);
+      if (badgeText) {
+        author.appendChild(el("span", "chat-badge", badgeText));
+      }
+      bubble.appendChild(author);
+
+      var body = el("div", "chat-bubble-body");
+      if (isError) body.style.color = "var(--warn)";
+      body.textContent = text;
+      bubble.appendChild(body);
+
+      chatLog.appendChild(bubble);
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+
+    function send(promptText) {
+      var text = (promptText || input.value || "").trim();
+      if (!text) return;
+
+      appendMessage("user", text);
+      history.push({ role: "user", content: text });
+      input.value = "";
+      input.disabled = true;
+      if (sendBtn) sendBtn.disabled = true;
+      if (statusInd) statusInd.textContent = "Thinking...";
+
+      postJSON("/api/assistant/chat", { messages: history })
+        .then(function (res) {
+          if (res.status === "unconfigured") {
+            appendMessage("assistant", res.reply || "AI Assistant is not configured. Add your NuGen API key to the backend environment.", "NuGen", true);
+            if (alertBox) {
+              alertBox.hidden = false;
+              alertBox.textContent = "AI Assistant is not configured. Add your NuGen API key to the backend environment.";
+            }
+            if (statusInd) {
+              statusInd.textContent = "Unconfigured";
+              statusInd.style.color = "var(--warn)";
+            }
+          } else if (res.status === "error") {
+            appendMessage("assistant", (res.reply || "An error occurred.") + (res.error_detail ? "\n[" + res.error_detail + "]" : ""), "Error", true);
+            if (statusInd) {
+              statusInd.textContent = "Error";
+              statusInd.style.color = "var(--bad)";
+            }
+          } else {
+            appendMessage("assistant", res.reply || "No response received.", "NuGen Llama-3.2");
+            history.push({ role: "assistant", content: res.reply });
+            if (statusInd) {
+              statusInd.textContent = "Ready";
+              statusInd.style.color = "";
+            }
+          }
+        })
+        .catch(function (err) {
+          appendMessage("assistant", "Request failed: " + (err.message || String(err)), "Failed", true);
+          if (statusInd) {
+            statusInd.textContent = "Error";
+            statusInd.style.color = "var(--bad)";
+          }
+        })
+        .then(function () {
+          input.disabled = false;
+          if (sendBtn) sendBtn.disabled = false;
+          input.focus();
+        });
+    }
+
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        e.stopPropagation();
+        e.preventDefault();
+        send();
+      }
+    });
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      send();
+    });
+
+    Array.prototype.forEach.call(document.querySelectorAll(".starter-chip"), function (btn) {
+      btn.addEventListener("click", function () {
+        var q = btn.dataset.q || btn.textContent;
+        send(q);
+      });
+    });
+
+    updateStatus();
+  }
+
   function boot() {
     initMap();
     renderLayers();
@@ -2077,6 +2211,7 @@
       openLinkedJob();
     });
     getJSON("/api/scoring").then(renderWeights).catch(function (e) { console.error(e); });
+    initAssistant();
   }
 
   if (document.readyState === "loading") {
