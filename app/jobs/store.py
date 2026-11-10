@@ -241,7 +241,7 @@ class Trace:
 # The steps a full run walks, in order, so the UI can show position rather than
 # just motion. NO_OIL replaces everything from METOCEAN on when a scene is clean.
 PIPELINE_STEPS = [
-    "DETECT", "CHAR", "EO", "RENDER", "METOCEAN", "HINDCAST",
+    "INGEST", "DETECT", "CHAR", "EO", "RENDER", "METOCEAN", "HINDCAST",
     "FORECAST", "COAST", "AGE_PROXY", "AIS", "FILTER", "SCORE",
 ]
 

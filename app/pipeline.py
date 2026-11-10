@@ -15,7 +15,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
 
-from . import config, scenes as scenes_mod
+from . import config, scenes as scenes_mod, stage1
+from .ais import availability as ais_availability
 from .ais import filter as ais_filter, ingest as ais_ingest, score as ais_score, stage4 as ais_stage4
 from .drift import advection, cone as cone_mod, fields as fields_mod, land
 from .eo import corroborate as eo_corroborate
@@ -79,9 +80,12 @@ class NorseForcingCoverageError(NorseForcingIntegrationError):
     """The explicit NORSE2019 profile cannot cover the requested run."""
 
 
-def _load_forcing(scene_id, lat, lon, t_sat, profile):
+def _load_forcing(scene_id, lat, lon, t_sat, profile,
+                  required_start=None, required_end=None):
     if profile == "default":
-        return fields_mod.load_for_scene(scene_id, lat, lon, t_sat)
+        return fields_mod.load_for_scene(
+            scene_id, lat, lon, t_sat,
+            required_start=required_start, required_end=required_end)
     if profile != "norse2019":
         raise ValueError("metocean_profile must be 'default' or 'norse2019'")
     # This explicit path bypasses load_for_scene(), whose last resort is the
@@ -171,12 +175,35 @@ def detect_scene(
     render_overlays: bool = True,
     job_id: Optional[str] = None,
     trace: Optional[job_store.Trace] = None,
+    t_sat: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Segment one scene and characterise every oil and look-alike polygon."""
     trace = trace or job_store.Trace()
 
-    trace.start("DETECT", "segment Sigma0 into sea / look-alike / mineral oil")
     sar = scenes_mod.load_raster(scene)
+
+    # Stage 1: Ingest & gate (M2)
+    trace.start("INGEST", "scene validation, wind gate, CA-CFAR")
+    try:
+        stage1_report = stage1.for_scene(scene, t_sat=t_sat, sar=sar)
+    except Exception as exc:  # noqa: BLE001 - Stage 1 must never break the pipeline
+        stage1_report = {
+            "stage": "ingest",
+            "status": "unavailable",
+            "warnings": ["stage 1 could not run: %s" % exc],
+        }
+    s1_status = stage1_report.get("status", "unavailable")
+    trace.end(
+        "warn" if s1_status in ("partial", "unavailable") else "ok",
+        stage_status=s1_status,
+        product=stage1_report.get("product", {}).get("quantity"),
+        wind_gate=stage1_report.get("wind_gate", {}).get("gate"),
+        wind_speed_ms=stage1_report.get("wind_gate", {}).get("speed_ms"),
+        cfar_windows=stage1_report.get("cfar", {}).get("n_windows"),
+        cfar_retained_fraction=stage1_report.get("cfar", {}).get("retained_fraction"),
+    )
+
+    trace.start("DETECT", "segment Sigma0 into sea / look-alike / mineral oil")
     db = raster_mod.to_db(sar.array)
 
     # Coastline handling. Land is full of dark pixels that are not slicks --
@@ -297,6 +324,7 @@ def detect_scene(
 
     return {
         "scene": scene.to_dict(),
+        "stage1": stage1_report,
         "sar_bounds": list(sar.bounds_lonlat()),
         "mask": mask,
         "oil_prob": seg["oil_prob"],
@@ -339,12 +367,20 @@ def run_drift(
             if metocean_profile == "default"
             else "load checksum-verified NORSE2019 currents and 10 m wind")
     trace.start("METOCEAN", note)
-    field = _load_forcing(scene_id, clat, clon, t_sat, metocean_profile)
+    required_start = t_sat - timedelta(hours=target_hindcast_hours)
+    required_end = t_sat + timedelta(hours=int(forecast_hours))
+    field = _load_forcing(scene_id, clat, clon, t_sat, metocean_profile,
+                          required_start, required_end)
     if metocean_profile == "norse2019":
         _require_norse_coverage(field, (clon, clat), ring, t_sat,
                                 target_hindcast_hours, forecast_hours)
         _install_norse_strict_sampling(field)
-    covers = field.covers(clat, clon, t_sat)
+    covers = (not field.synthetic and
+              field.covers_interval(clat, clon, required_start, required_end))
+    if ring:
+        covers = covers and all(
+            field.covers_interval(float(lat), float(lon), required_start, required_end)
+            for lon, lat in ring)
     described = field.describe()
     if metocean_profile == "norse2019":
         described["forcing_profile"] = metocean_profile
@@ -467,7 +503,8 @@ def run_attribution(
     trace = trace or job_store.Trace()
 
     trace.start("AIS", "query tracks intersecting the origin zone window")
-    conn = ais_ingest.connect()
+    db_path = Path(config.AIS_SQLITE)
+    conn = ais_ingest.connect() if db_path.is_file() else ais_ingest.connect(Path(":memory:"))
     try:
         store = ais_ingest.stats(conn).to_dict()
         res = ais_filter.candidates(
@@ -492,6 +529,9 @@ def run_attribution(
     finally:
         conn.close()
 
+    ais_data = ais_availability.inspect(
+        config.AIS_SQLITE, res.bbox, res.window, candidates=len(res.tracks))
+
     # Which store did the candidate tracks actually come from? The scorer is
     # blind to this, but the operator must not be.
     sources: Dict[str, int] = {}
@@ -515,11 +555,14 @@ def run_attribution(
         stage4 = {"status": "unavailable", "error": "%s: %s" % (type(exc).__name__, exc)}
         trace.end("error", error=stage4["error"])
 
+    stage4["ais_data"] = ais_data
+
     return {
         "suspects": [s.to_dict() for s in suspects],
         "funnel": funnel,
         "store": store,
         "sources_used": sources,
+        "ais_data": ais_data,
         "scoring": ais_score.explain_weights(),
         "stage4": stage4,
         "trace": trace,
@@ -564,12 +607,14 @@ def run(
     t_obs = _utc(t_sat or scene.t_sat)
 
     det = detect_scene(scene, prefer_model=prefer_model, threshold_db=threshold_db,
-                       render_overlays=render_overlays, job_id=job_id, trace=trace)
+                       render_overlays=render_overlays, job_id=job_id, trace=trace,
+                       t_sat=t_obs)
 
     doc: Dict[str, Any] = {
         "job_id": job_id,
         "created": _iso(datetime.now(timezone.utc)),
         "status": "ok",
+        "stage1": det.get("stage1"),
         "input": {
             "scene_id": scene.id,
             "t_sat": _iso(t_obs),
@@ -593,6 +638,8 @@ def run(
         },
         "config": config.as_dict(),
     }
+
+    doc["scene"]["ais_data"] = ais_availability.scene_status(scene)
 
     oil = det["polygon_objects"]
     if not oil:
@@ -634,6 +681,7 @@ def run(
                               "scoring": ais_score.explain_weights()}
         doc["trace"] = trace.to_list()
         doc["total_ms"] = trace.total_ms()
+        doc["warnings"] = list(det.get("stage1", {}).get("warnings", []))
         trace.finish()
         job_store.save(job_id, doc)
         return doc
@@ -657,11 +705,12 @@ def run(
     doc["primary_polygon"] = primary.to_feature()
     doc["drift"] = {k: v for k, v in drift.items() if k not in ("trace", "_runs")}
     doc["attribution"] = {k: v for k, v in attr.items() if k != "trace"}
+    doc["scene"]["ais_data"] = attr["ais_data"]
     doc["age_hours_proxy"] = drift["age_hours_proxy"]
     doc["trace"] = trace.to_list()
     doc["total_ms"] = trace.total_ms()
 
-    warnings: List[str] = []
+    warnings: List[str] = list(det.get("stage1", {}).get("warnings", []))
     if det["metrics"]["detector"] != "unet":
         warnings.append("Detection used the -22 dB baseline, not the U-Net. %s"
                         % (det["metrics"]["fallback_reason"] or ""))
@@ -679,6 +728,15 @@ def run(
                         "placeholder field."
                         % (mo.get("mean_wind_ms") or 0.0))
     used = attr.get("sources_used") or {}
+    ais_state = attr.get("ais_data") or {}
+    if ais_state.get("status") == "database_missing":
+        warnings.append("AIS database is missing. No vessel positions were queried.")
+    elif ais_state.get("status") == "database_empty":
+        warnings.append("AIS database is empty. No vessel positions were queried.")
+    elif ais_state.get("status") == "real_no_matches":
+        warnings.append("Real AIS exists in the local database, but no records matched this scene's search window.")
+    elif ais_state.get("status") == "real_no_candidates":
+        warnings.append("Real AIS records were queried, but no vessels passed the spatial and temporal filter.")
     if any("simulated" in k for k in used):
         n_sim = sum(v for k, v in used.items() if "simulated" in k)
         n_real = sum(v for k, v in used.items() if "simulated" not in k)

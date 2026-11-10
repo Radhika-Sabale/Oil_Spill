@@ -23,7 +23,7 @@ so it can be pitched.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -71,6 +71,7 @@ class MetoceanField:
     # The operator must be able to tell a live field from a frozen one.
     live: bool = False
     fetched_utc: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
     # -- metadata -----------------------------------------------------------
     @property
@@ -93,6 +94,8 @@ class MetoceanField:
         back with empty current arrays. Drifting on wind alone is still real
         physics, but it is a weaker answer and the operator has to be told.
         """
+        if self.synthetic:
+            return False
         u = self.data.get("u_current")
         v = self.data.get("v_current")
         if u is None or v is None:
@@ -116,6 +119,7 @@ class MetoceanField:
             "scene_id": self.scene_id,
             "source": self.source,
             "license": self.license,
+            "metadata": dict(self.metadata),
             "synthetic": self.synthetic,
             "live": self.live,
             "fetched_utc": self.fetched_utc,
@@ -128,10 +132,10 @@ class MetoceanField:
             "wave_peak_period_range_s": ([float(np.nanmin(self.data["wave_tp"])),
                                            float(np.nanmax(self.data["wave_tp"]))]
                                           if self.has_stokes else None),
-            "mean_current_ms": round(float(np.mean(np.hypot(
-                self.data["u_current"], self.data["v_current"]))), 4),
-            "mean_wind_ms": round(float(np.mean(np.hypot(
-                self.data["u_wind10"], self.data["v_wind10"]))), 3),
+            "mean_current_ms": (None if self.synthetic else round(float(np.mean(np.hypot(
+                self.data["u_current"], self.data["v_current"]))), 4)),
+            "mean_wind_ms": (None if self.synthetic else round(float(np.mean(np.hypot(
+                self.data["u_wind10"], self.data["v_wind10"]))), 3)),
             "bounds": [round(v, 4) for v in self.bounds],
             "t_start": t0,
             "t_end": t1,
@@ -143,6 +147,15 @@ class MetoceanField:
         te = _to_epoch(t)
         w, s, e, n = self.bounds
         return (s <= lat <= n) and (w <= lon <= e) and (self.times[0] <= te <= self.times[-1])
+
+    def covers_interval(self, lat: float, lon: float, start, end) -> bool:
+        """Whether a point and the complete requested interval are in the cube."""
+        t0, t1 = _to_epoch(start), _to_epoch(end)
+        if t1 < t0:
+            return False
+        w, s, e, n = self.bounds
+        return (s <= float(lat) <= n and w <= float(lon) <= e
+                and self.times[0] <= t0 and t1 <= self.times[-1])
 
     # -- lookup -------------------------------------------------------------
     def sample(self, lat, lon, t) -> Dict[str, np.ndarray]:
@@ -241,7 +254,8 @@ def _bilinear(plane: np.ndarray, yi, yw, xi, xw) -> np.ndarray:
 # Loading
 # ---------------------------------------------------------------------------
 
-def _from_arrays(times, lats, lons, data, source, license_, scene_id, synthetic=False) -> MetoceanField:
+def _from_arrays(times, lats, lons, data, source, license_, scene_id,
+                 synthetic=False, metadata=None) -> MetoceanField:
     times = np.asarray([_to_epoch(t) for t in np.asarray(times).ravel()], dtype=float)
     lats = np.asarray(lats, dtype=float).ravel()
     lons = np.asarray(lons, dtype=float).ravel()
@@ -282,6 +296,7 @@ def _from_arrays(times, lats, lons, data, source, license_, scene_id, synthetic=
         license=license_,
         synthetic=synthetic,
         scene_id=scene_id,
+        metadata=dict(metadata or {}),
     )
 
 
@@ -300,6 +315,7 @@ def load_npz(path: Path) -> MetoceanField:
         meta.get("source", "cached npz"),
         meta.get("license", ""),
         meta.get("scene_id", path.stem),
+        metadata=meta.get("metadata", {}),
     )
 
 
@@ -313,6 +329,7 @@ def load_json(path: Path) -> MetoceanField:
         doc.get("source", "cached json"),
         doc.get("license", ""),
         doc.get("scene_id", Path(path).stem),
+        metadata=doc.get("metadata", {}),
     )
 
 
@@ -436,7 +453,8 @@ def fetch_live(scene_id: str, lat0: float, lon0: float, t_center) -> Optional[Me
     return field
 
 
-def load_for_scene(scene_id: str, lat0: float = 0.0, lon0: float = 0.0, t_center=None) -> MetoceanField:
+def load_for_scene(scene_id: str, lat0: float = 0.0, lon0: float = 0.0, t_center=None,
+                   required_start=None, required_end=None) -> MetoceanField:
     """Find the cube for a scene: live if permitted, else cached, else flagged.
 
     Order matters. Live is tried first when an operator has explicitly enabled
@@ -449,25 +467,29 @@ def load_for_scene(scene_id: str, lat0: float = 0.0, lon0: float = 0.0, t_center
             return live
 
     base = config.METOCEAN_DIR
+    t_center = t_center or datetime.now(timezone.utc)
+    required_start = t_center if required_start is None else required_start
+    required_end = t_center if required_end is None else required_end
     for ext, loader in ((".npz", load_npz), (".nc", load_netcdf), (".json", load_json)):
         p = base / (scene_id + ext)
         if p.exists():
             try:
                 f = loader(p)
-                f.scene_id = scene_id
-                return f
+                if f.covers_interval(lat0, lon0, required_start, required_end):
+                    f.scene_id = scene_id
+                    return f
             except Exception as exc:  # pragma: no cover - corrupt cache
                 print("[metocean] failed to read %s: %s" % (p.name, exc))
-    # Any cube whose footprint contains the point is better than a constant.
+    # A cache is eligible only when it covers the point and full requested time.
     for p in sorted(base.glob("*.npz")):
         try:
             f = load_npz(p)
         except Exception:
             continue
-        w, s, e, n = f.bounds
-        if s <= lat0 <= n and w <= lon0 <= e:
+        if f.covers_interval(lat0, lon0, required_start, required_end):
+            f.scene_id = scene_id
             return f
-    return synthetic_field(lat0, lon0, t_center or datetime.now(timezone.utc), scene_id=scene_id)
+    return synthetic_field(lat0, lon0, t_center, scene_id=scene_id)
 
 
 def list_cached() -> List[Dict[str, Any]]:
@@ -490,6 +512,7 @@ def save_npz(path: Path, field: MetoceanField) -> None:
         "source": field.source,
         "license": field.license,
         "scene_id": field.scene_id,
+        "metadata": field.metadata,
     })
     np.savez_compressed(
         path,

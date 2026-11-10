@@ -38,6 +38,7 @@ class SceneOut(BaseModel):
     centroid: List[float]
     crs: str
     ais_mode: str
+    ais_data: Dict[str, Any] = Field(default_factory=dict)
     source: str = ""
     license: str = ""
     notes: str = ""

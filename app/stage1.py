@@ -291,7 +291,7 @@ def run_stage1(vv_db: np.ndarray, transform: Sequence[float], crs: str,
             "cfar": cfar, "warnings": warnings}
 
 
-def for_scene(scene: Any, t_sat: Optional[Any] = None) -> Dict[str, Any]:
+def for_scene(scene: Any, t_sat: Optional[Any] = None, sar: Optional[Any] = None) -> Dict[str, Any]:
     """Run Stage 1 for a registry Scene. Never raises: a failure becomes `unavailable`.
 
     Wind comes from the scene's own cached metocean cube (never a synthetic
@@ -302,7 +302,8 @@ def for_scene(scene: Any, t_sat: Optional[Any] = None) -> Dict[str, Any]:
         from . import config, scenes as scenes_mod
         from .drift import fields as fields_mod
 
-        sar = scenes_mod.load_raster(scene)
+        if sar is None:
+            sar = scenes_mod.load_raster(scene)
         clon, clat = sar.centre_lonlat()
         cube = Path(config.METOCEAN_DIR) / (scene.id + ".npz")
         if cube.exists():
