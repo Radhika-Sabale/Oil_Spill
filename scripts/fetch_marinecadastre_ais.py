@@ -25,6 +25,7 @@ import argparse
 import csv
 import io
 import sys
+import time
 import urllib.request
 import zipfile
 from datetime import datetime, timedelta, timezone
@@ -58,29 +59,83 @@ def download(day: datetime, dest_dir: Path) -> Optional[Path]:
     url = url_for(day)
     dest = dest_dir / Path(url).name
     dest.parent.mkdir(parents=True, exist_ok=True)
-    if dest.exists() and dest.stat().st_size > 1_000_000:
+    if dest.exists() and zipfile.is_zipfile(dest):
         print("   already downloaded: %s (%.0f MB)" % (dest.name, dest.stat().st_size / 1e6))
         return dest
+
     print("   GET %s" % url)
+    expected = None
     try:
-        with urllib.request.urlopen(url, timeout=180) as resp, dest.open("wb") as fh:
-            total = int(resp.headers.get("Content-Length") or 0)
-            done = 0
-            last = -1
-            while True:
-                block = resp.read(1 << 20)
-                if not block:
-                    break
-                fh.write(block)
-                done += len(block)
-                if total:
-                    pct = int(100 * done / total)
-                    if pct != last and pct % 10 == 0:
-                        print("      %3d%%  %.0f / %.0f MB" % (pct, done / 1e6, total / 1e6))
-                        last = pct
+        head = urllib.request.Request(url, method="HEAD")
+        with urllib.request.urlopen(head, timeout=60) as resp:
+            expected = int(resp.headers.get("Content-Length") or 0) or None
     except Exception as exc:
-        print("   download failed: %s" % exc)
-        dest.unlink(missing_ok=True)
+        print("   archive size lookup failed (%s); will use range response headers" % exc)
+
+    done = dest.stat().st_size if dest.exists() else 0
+    if expected is not None and done > expected:
+        dest.unlink()
+        done = 0
+
+    # NOAA connections can end early without raising an exception. Download in
+    # bounded byte ranges, resume from the actual file length, and only hand a
+    # ZIP to the CSV reader after the archive directory is present.
+    attempts_without_progress = 0
+    chunk_size = 8 << 20
+    last_pct = -1
+    while expected is None or done < expected:
+        start = done
+        end = start + chunk_size - 1 if expected is None else min(start + chunk_size, expected) - 1
+        req = urllib.request.Request(url, headers={"Range": "bytes=%d-%d" % (start, end)})
+        try:
+            with urllib.request.urlopen(req, timeout=180) as resp:
+                if resp.status != 206:
+                    raise IOError("server did not honor the byte-range request (HTTP %s)" % resp.status)
+                content_range = resp.headers.get("Content-Range", "")
+                try:
+                    range_spec, total_spec = content_range.split(" ", 1)[1].split("/", 1)
+                    range_start, range_end = [int(v) for v in range_spec.split("-", 1)]
+                    response_total = int(total_spec)
+                except (IndexError, ValueError):
+                    raise IOError("NOAA response did not include a valid Content-Range")
+                if range_start != start:
+                    raise IOError("NOAA returned byte range starting at %d, expected %d"
+                                  % (range_start, start))
+                if expected is None:
+                    expected = response_total
+                elif response_total != expected:
+                    raise IOError("NOAA archive size changed during download")
+                remaining = range_end - range_start + 1
+                mode = "ab" if start else "wb"
+                with dest.open(mode) as fh:
+                    while remaining:
+                        block = resp.read(min(1 << 20, remaining))
+                        if not block:
+                            break
+                        fh.write(block)
+                        done += len(block)
+                        remaining -= len(block)
+            if done == start:
+                attempts_without_progress += 1
+                if attempts_without_progress >= 8:
+                    print("   download failed: NOAA made no progress after 8 range retries")
+                    return None
+                time.sleep(min(2 ** attempts_without_progress, 15))
+            else:
+                attempts_without_progress = 0
+                pct = int(100 * done / expected) if expected else 0
+                if expected and pct >= last_pct + 10:
+                    print("      %3d%%  %.0f / %.0f MB" % (pct, done / 1e6, expected / 1e6))
+                    last_pct = pct
+        except Exception as exc:
+            attempts_without_progress += 1
+            if attempts_without_progress >= 8:
+                print("   download failed after 8 range retries: %s" % exc)
+                return None
+            time.sleep(min(2 ** attempts_without_progress, 15))
+
+    if not dest.exists() or dest.stat().st_size != expected or not zipfile.is_zipfile(dest):
+        print("   download failed: incomplete ZIP archive; partial file kept for resume")
         return None
     print("   saved %.0f MB" % (dest.stat().st_size / 1e6))
     return dest
