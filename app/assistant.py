@@ -137,19 +137,32 @@ def chat(
 
     except urllib.error.HTTPError as exc:
         err_msg = f"NuGen API HTTP error {exc.code}: {exc.reason}"
+        provider_message = ""
         try:
             err_body = exc.read().decode("utf-8")
             err_data = json.loads(err_body)
-            if "message" in err_data:
-                err_msg = f"{err_msg} - {err_data['message']}"
-            elif "error" in err_data:
-                err_msg = f"{err_msg} - {err_data['error']}"
+            if isinstance(err_data, dict):
+                for key in ("message", "error", "detail"):
+                    value = err_data.get(key)
+                    if value:
+                        provider_message = (value if isinstance(value, str)
+                                            else json.dumps(value, ensure_ascii=False))
+                        break
+            if provider_message:
+                err_msg = f"{err_msg} - {provider_message}"
         except Exception:
             pass
         log.warning("NuGen API call failed: %s", err_msg)
+        if "model not found" in provider_message.lower():
+            reply = ("NuGen could not find the configured model. Check that "
+                     "NUGEN_MODEL_ID in .env is an active model available to this account.")
+        elif provider_message:
+            reply = f"NuGen service error ({exc.code}): {provider_message}"
+        else:
+            reply = f"NuGen service error ({exc.code}). Please verify the API key and quota."
         return {
             "status": "error",
-            "reply": f"NuGen service error ({exc.code}). Please verify your API key and quota.",
+            "reply": reply,
             "error_detail": err_msg,
             "experimental": True,
         }
