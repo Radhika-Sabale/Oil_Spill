@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 
 from . import config, scenes as scenes_mod
-from .ais import filter as ais_filter, ingest as ais_ingest, score as ais_score, stage4 as ais_stage4
+from .ais import coverage as ais_coverage, filter as ais_filter, ingest as ais_ingest, score as ais_score, stage4 as ais_stage4
 from .drift import advection, cone as cone_mod, fields as fields_mod, land
 from .eo import corroborate as eo_corroborate
 from .geo import geometry, raster as raster_mod
@@ -462,11 +462,13 @@ def run_attribution(
     slick_area_km2: Optional[float] = None,
     incident_id: Optional[str] = None,
     case_type: str = "manual_demo",
+    declared_ais_mode: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Join AIS to the origin zone, filter, score and rank."""
     trace = trace or job_store.Trace()
 
     trace.start("AIS", "query tracks intersecting the origin zone window")
+    db_existed = Path(config.AIS_SQLITE).exists()       # connect() creates the file
     conn = ais_ingest.connect()
     try:
         store = ais_ingest.stats(conn).to_dict()
@@ -474,8 +476,10 @@ def run_attribution(
             conn, origin_ring, origin_lon, origin_lat, t_origin,
             radius_km=radius_km, window_hours=window_h,
         )
-        trace.end("ok", rows_in_store=store["rows"], vessels_in_store=store["vessels"],
-                  considered=res.considered)
+        cov = ais_coverage.assess(store, res, db_existed, declared_ais_mode)
+        trace.end("ok" if cov["attribution_status"] == "possible" else "warn",
+                  rows_in_store=store["rows"], vessels_in_store=store["vessels"],
+                  considered=res.considered, ais_status=cov["status"])
 
         trace.start("FILTER", "drop vessels never within the search radius")
         funnel = res.to_dict()
@@ -507,7 +511,7 @@ def run_attribution(
         stage4 = ais_stage4.build_stage4(
             res, suspects, origin_ring, origin_lon, origin_lat, radius_km,
             slick_area_km2=slick_area_km2, incident_id=incident_id,
-            case_type=case_type, sources_used=sources,
+            case_type=case_type, sources_used=sources, ais_coverage=cov,
         )
         trace.end("ok", candidates=len(stage4["candidates"]), **stage4["stage4_status"])
     except Exception as exc:                      # noqa: BLE001
@@ -521,6 +525,7 @@ def run_attribution(
         "store": store,
         "sources_used": sources,
         "scoring": ais_score.explain_weights(),
+        "ais_coverage": cov,
         "stage4": stage4,
         "trace": trace,
     }
@@ -651,6 +656,7 @@ def run(
         radius_km=search_radius_km, window_h=origin_window_hours, top_n=top_n, trace=trace,
         zone_radius_km=drift["origin"].get("spread_km"),
         slick_area_km2=primary.area_km2, incident_id=job_id,
+        declared_ais_mode=scene.ais_mode,
         case_type="synthetic_demo" if scene.ais_mode == "simulated" else "real_historical",
     )
 
@@ -694,9 +700,19 @@ def run(
     elif used:
         warnings.append("AIS: all %d candidate vessels came from real recorded tracks (%s)."
                         % (sum(used.values()), ", ".join(sorted(used))))
+    cov = attr.get("ais_coverage") or {}
+    if cov.get("attribution_status") not in (None, "possible"):
+        warnings.append("AIS %s: %s" % (cov.get("status"), cov.get("message")))
+    if cov.get("label_warning"):
+        warnings.append(cov["label_warning"])
     if not attr["suspects"]:
-        warnings.append("No vessel passed the spatio-temporal filter. Reporting no suspects "
-                        "rather than forcing a culprit.")
+        if cov.get("attribution_status") in (None, "possible"):
+            warnings.append("No vessel passed the spatio-temporal filter. Reporting no suspects "
+                            "rather than forcing a culprit. AIS is not a census of vessels.")
+        else:
+            warnings.append("Zero suspects here means NO ASSESSMENT was possible, not that no "
+                            "suspicious vessel was present.")
+    doc["ais_data_available"] = cov.get("attribution_status") == "possible"
     doc["warnings"] = warnings
 
     trace.finish()

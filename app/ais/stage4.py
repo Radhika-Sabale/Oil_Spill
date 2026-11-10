@@ -77,7 +77,8 @@ def build_stage4(res, suspects: Sequence[Any], ring: Sequence[Tuple[float, float
                  slick_area_km2: Optional[float] = None, incident_id: Optional[str] = None,
                  case_type: str = "manual_demo", sources_used: Optional[Dict[str, int]] = None,
                  thickness_um: Optional[Tuple[float, float, float]] = None,
-                 max_speed_kn: Optional[float] = None, h3_res: int = h3_index.H3_RES) -> Dict[str, Any]:
+                 max_speed_kn: Optional[float] = None, h3_res: int = h3_index.H3_RES,
+                 ais_coverage: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Build the Stage 4 result. `res` is the FilterResult from ais.filter.candidates."""
     window = tuple(res.window)
     ring = list(ring) if ring else []
@@ -159,7 +160,9 @@ def build_stage4(res, suspects: Sequence[Any], ring: Sequence[Tuple[float, float
         "case_type": _case_type(case_type, sources_used),
         "candidates": candidates,
         "conclusion": CONCLUSION,
+        "ais_coverage": dict(ais_coverage or {}),
         "stage4_status": {
+            "ais": (ais_coverage or {}).get("status", "unknown"),
             "h3": h3_report["status"],
             "reachability": "implemented",
             "dark_target": "unavailable",

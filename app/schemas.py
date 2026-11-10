@@ -237,9 +237,16 @@ class Stage4Verdict(BaseModel):
     candidates: List[Stage4Candidate] = Field(default_factory=list)
     conclusion: str
     stage4_status: Dict[str, str] = Field(default_factory=dict)
+    ais_coverage: Dict[str, Any] = Field(default_factory=dict)
     h3: Dict[str, Any] = Field(default_factory=dict)
     slick: Dict[str, Any] = Field(default_factory=dict)
     parameters: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _no_candidates_without_ais(self):
+        if self.ais_coverage.get("attribution_status") == "not_possible" and self.candidates:
+            raise ValueError("candidates were listed although AIS attribution was not possible")
+        return self
 
     @field_validator("conclusion")
     @classmethod

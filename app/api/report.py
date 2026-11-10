@@ -65,7 +65,19 @@ def _stage4_lines(attr: Dict[str, Any]) -> List[str]:
 
     status = st.get("stage4_status") or {}
     out.append("Case type: %s   Incident: %s" % (st.get("case_type"), st.get("incident_id")))
-    out.append("Feature status: " + ", ".join("%s=%s" % (k, v) for k, v in sorted(status.items())))
+    cov = st.get("ais_coverage") or {}
+    if cov:
+        out += _wrap("AIS DATA: %s (attribution %s). %s" % (cov.get("status"), cov.get("attribution_status"),
+                                                           cov.get("message")))
+        out += _wrap("Zero suspects means: %s" % cov.get("zero_suspects_means"))
+        if cov.get("label_warning"):
+            out += _wrap("Note: " + cov["label_warning"])
+        out += _wrap("Store: %s positions, %s vessels, %s to %s; origin window %s to %s."
+                     % (cov.get("store_rows"), cov.get("store_vessels"),
+                        (cov.get("store_time_range") or [None, None])[0],
+                        (cov.get("store_time_range") or [None, None])[1],
+                        (cov.get("window") or [None, None])[0], (cov.get("window") or [None, None])[1]))
+    out += _wrap("Feature status: " + ", ".join("%s=%s" % (k, v) for k, v in sorted(status.items())))
     h3 = st.get("h3") or {}
     if h3.get("status") == "implemented":
         out += _wrap("H3 res %s check: %s vessels, direct filter kept %s, H3 kept %s, missed by H3 %s "
