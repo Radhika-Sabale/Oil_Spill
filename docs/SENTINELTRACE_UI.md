@@ -87,6 +87,33 @@ recomputed and the backend is untouched.
 - A PDF plus a checksum is an integrity check. It does not establish that a
   vessel released oil.
 
+## AI Assistant (NuGen)
+
+The console's **AI Assistant** tab answers questions about method and domain:
+SAR look-alikes, drift physics, attribution reasoning. It is the one outbound
+call in the product and it is fenced off from everything that produces a
+finding:
+
+- No pipeline module imports `app.assistant`; a test asserts that.
+- The assistant cannot write a mask, a drift field, a score or an attribution.
+- `NUGEN_API_KEY` lives in `.env` only. `/api/assistant/status` reports whether
+  a key is present and never the key. `.env` is gitignored and the offline
+  boundary test scans the tree for credential shapes, including NuGen's.
+- With no key the panel loads, says it is not configured, and the rest of the
+  console stays fully offline.
+
+Failure is shaped, never a 500. `POST /api/assistant/chat` always answers with
+`status` plus, on failure, a `code` (`unconfigured`, `auth`, `rate_limited`,
+`model_not_found`, `timeout`, `network`, `upstream`, `bad_response`,
+`empty_completion`, `no_prompt`) and one sentence an operator can act on. The
+timeout is 12 s by default (`NUGEN_TIMEOUT_S`), roughly four times the measured
+latency, because a longer wait reads as a frozen panel in front of a judge.
+
+History is capped at `NUGEN_MAX_HISTORY` turns (12) and resent each call; the
+transcript keeps everything, and **Clear** resets the session. Replies render as
+DOM built by `app.js` (paragraphs, bullets, bold, code) -- never `innerHTML`,
+because the text comes from a remote model.
+
 ## Known gaps
 
 - No trained segmentation checkpoint (`models/oil_unet_best.pt`), so the dark-patch

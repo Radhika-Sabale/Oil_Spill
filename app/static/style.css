@@ -706,6 +706,13 @@ label.probe input { accent-color: var(--accent); margin-top: 1px; flex: none; }
   .rail { max-height: 40vh; }
   .mainnav { display: none; }
   .strip { grid-template-columns: 1fr; height: auto; }
+  /* Once the rails stack, `.rail { max-height: 40vh }` plus the shared
+     `.rail-block.grow > div { min-height: 0 }` collapsed the assistant
+     transcript to zero pixels: the panel showed its header, its suggested
+     questions and an empty gap where the conversation should be. A projector
+     at 1024x768 hits exactly this breakpoint. */
+  .view[data-view="assistant"] .assistant-chat-section { min-height: 230px; }
+  .view[data-view="assistant"] .assistant-chat-log { min-height: 170px; max-height: 40vh; }
 }
 
 /* ==========================================================================
@@ -1234,6 +1241,57 @@ button.mini, .mini {
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+.assistant-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+#assistant-clear {
+  font: 600 9px/1 var(--sans);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+}
+#assistant-clear:hover { border-color: var(--ink-3); color: var(--ink); }
+
+/* Formatting a remote model's reply: elements built by app.js, never HTML. */
+.chat-bubble-body strong { font-weight: 600; }
+.chat-bubble-body code {
+  font: 10.5px var(--mono);
+  padding: 0 3px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 8%, transparent);
+}
+.chat-bubble-body ul {
+  margin: 2px 0 6px 14px;
+  padding: 0;
+}
+.chat-bubble-body li { margin: 0 0 2px; }
+
+/* Thinking indicator. Three dots that pulse, so a three-second wait reads as
+   work in progress rather than a frozen panel. */
+.chat-bubble.typing .chat-bubble-body {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  color: var(--ink-3);
+}
+.typing-dots {
+  letter-spacing: 1px;
+  animation: st-typing 1.2s ease-in-out infinite;
+}
+.typing-label { font-style: italic; }
+@keyframes st-typing {
+  0%, 100% { opacity: .25; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots { animation: none; opacity: .8; }
 }
 .assistant-chat-log {
   flex: 1 1 auto;

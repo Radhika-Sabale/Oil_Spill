@@ -133,6 +133,7 @@ def test_no_credentials_are_committed():
         re.compile(r"hf_[A-Za-z0-9]{34,}"),        # Hugging Face user token
         re.compile(r"KGAT_[A-Za-z0-9]{24,}"),      # Kaggle access token
         re.compile(r"AKIA[0-9A-Z]{16}"),           # AWS key id
+        re.compile(r"nugen-[0-9a-f]{12,}"),        # NuGen API key
     ]
     skip_dirs = {".git", "__pycache__", "data", "models", ".pytest_cache",
                  "node_modules", "venv", ".venv"}
@@ -140,6 +141,11 @@ def test_no_credentials_are_committed():
     for current, dirs, files in os.walk(ROOT):
         dirs[:] = [name for name in dirs if name not in skip_dirs]
         for name in files:
+            # `.env` is where a credential belongs; it is gitignored, and the
+            # check is for credentials committed into the tree. `.env.example`
+            # ships empty values and is still scanned.
+            if name == ".env" or name.startswith(".env.") and name != ".env.example":
+                continue
             p = Path(current) / name
             if p.suffix.lower() in (".pt", ".tif", ".png", ".npz", ".sqlite"):
                 continue
@@ -181,3 +187,45 @@ def test_no_prep_only_package_is_a_runtime_requirement():
     assert not offenders, (
         "these are offline-prep or training packages and must stay commented "
         "out of the runtime requirements: %s" % offenders)
+
+
+# ----------------------------------------------------------------------------
+# The NuGen assistant is the one deliberate exception, so it is fenced in.
+# ----------------------------------------------------------------------------
+
+# Everything under app/ except these may not import the assistant. The pipeline
+# must not be able to reach it, even transitively: a model answer is not
+# evidence, and nothing about a mask, a drift field, a score or an attribution
+# may depend on one.
+ASSISTANT_ALLOWED_IMPORTERS = {"app/main.py", "app/api/assistant.py"}
+
+
+def test_only_the_assistant_module_speaks_to_the_network():
+    """`app/assistant.py` is the only module allowed to open an outbound call."""
+    users = []
+    for rel, path in _module_files():
+        text = path.read_text(encoding="utf-8")
+        if "urllib.request" in text and "urllib.request.Request" in text:
+            users.append(rel)
+    assert users == ["app/assistant.py"], (
+        "exactly app/assistant.py may make an outbound HTTP call, found: %s" % users)
+
+
+def test_the_pipeline_cannot_reach_the_assistant():
+    """No detection, drift, scoring or reporting module imports the assistant."""
+    offenders = []
+    for rel, path in _module_files():
+        if rel in ASSISTANT_ALLOWED_IMPORTERS:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import) and any(
+                    a.name.split(".")[-1] == "assistant" for a in node.names):
+                offenders.append(rel)
+            elif isinstance(node, ast.ImportFrom):
+                if (node.module or "").split(".")[-1] == "assistant":
+                    offenders.append(rel)
+                elif any(a.name == "assistant" for a in node.names):
+                    offenders.append(rel)
+    assert not offenders, (
+        "only main.py may mount the assistant router; these import it: %s" % sorted(set(offenders)))

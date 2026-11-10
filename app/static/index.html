@@ -298,7 +298,13 @@
       </section>
 
       <section class="rail-block grow assistant-chat-section">
-        <h2>Conversation <span class="count" id="assistant-status-indicator">Ready</span></h2>
+        <h2>
+          Conversation
+          <span class="assistant-head-actions">
+            <span class="count" id="assistant-status-indicator">Ready</span>
+            <button type="button" class="mini" id="assistant-clear" title="Clear this conversation">Clear</button>
+          </span>
+        </h2>
         <div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-live="polite">
           <div class="chat-bubble ai">
             <div class="chat-bubble-author">SentinelTrace AI <span class="chat-badge">Domain Model</span></div>
