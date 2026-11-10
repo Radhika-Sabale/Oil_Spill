@@ -112,7 +112,7 @@ def _asset_stamp() -> str:
     h = hashlib.sha256()
     h.update(config.VERSION.encode("utf-8"))
     static = Path(config.STATIC_DIR)
-    for name in ("app.js", "style.css", "index.html"):
+    for name in ("app.js", "style.css", "landing.css", "landing.html", "index.html"):
         f = static / name
         try:
             h.update(f.read_bytes())
@@ -123,12 +123,26 @@ def _asset_stamp() -> str:
 
 @app.get("/", include_in_schema=False)
 def index():
-    """Serve the console shell uncached, with content-addressed asset URLs.
+    """Serve the landing page at /, with content-addressed asset URLs.
 
-    A browser that caches index.html but revalidates app.js will happily pair a
-    new script with an old DOM, and the console then fails on an element that
-    does not exist yet. Hashing the assets into their URLs and refusing to cache
-    the shell makes that combination impossible.
+    The landing page is the public face; the console lives at /console.
+    Both get cache-busted asset URLs so a browser never pairs a stale DOM
+    with a fresh script.
+    """
+    page = Path(config.STATIC_DIR) / "landing.html"
+    if not page.exists():
+        return JSONResponse({"error": "static/landing.html is missing"}, status_code=500)
+    html = page.read_text(encoding="utf-8").replace("__V__", _asset_stamp())
+    return HTMLResponse(html, headers={"Cache-Control": "no-store, must-revalidate"})
+
+
+@app.get("/console", include_in_schema=False)
+def console():
+    """Serve the operations console shell, uncached.
+
+    The console is the working UI for operators: scene picker, chart, time axis,
+    evidence rail. It is separate from the landing page so the public face can stay
+    marketing without touching the tool.
     """
     page = Path(config.STATIC_DIR) / "index.html"
     if not page.exists():
