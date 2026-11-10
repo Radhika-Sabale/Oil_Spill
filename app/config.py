@@ -14,6 +14,29 @@ from pathlib import Path
 # ----------------------------------------------------------------------------
 APP_DIR = Path(__file__).resolve().parent
 ROOT_DIR = APP_DIR.parent
+
+
+def _load_dotenv(path: Path) -> None:
+    """Lightweight .env loader without third-party dependencies."""
+    if not path.is_file():
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                k, v = line.split("=", 1)
+                k = k.strip()
+                v = v.strip().strip("\"'")
+                if k and k not in os.environ:
+                    os.environ[k] = v
+    except Exception:
+        pass
+
+
+_load_dotenv(ROOT_DIR / ".env")
+
 DATA_DIR = Path(os.environ.get("TIDETRACE_DATA", ROOT_DIR / "data"))
 SAR_DIR = DATA_DIR / "sar"
 AIS_DIR = DATA_DIR / "ais"
@@ -153,6 +176,12 @@ ALLOW_SELFTEST_SCENES = _b("TIDETRACE_ALLOW_SELFTEST_SCENES", False)
 
 CLASS_NAMES = {0: "sea", 1: "look_alike", 2: "mineral_oil"}
 
+# NuGen AI Domain Intelligence Assistant (Demo feature)
+NUGEN_API_KEY = os.environ.get("NUGEN_API_KEY", "").strip()
+NUGEN_MODEL_ID = os.environ.get("NUGEN_MODEL_ID", "model_01m72rrs9crb43tz").strip()
+NUGEN_API_URL = os.environ.get("NUGEN_API_URL", "https://api.nugen.in/api/v3/inference/chat/completions").strip()
+NUGEN_BASE_MODEL = "Llama-3.2-3B-Instruct"
+
 UI_TITLE = "NTRO Oil Spill Attribution Console"
 PROJECT_CODENAME = "TideTrace"
 SIH_ID = "SIH26143"
@@ -188,4 +217,7 @@ def as_dict() -> dict:
         "keep_job_overlays": KEEP_JOB_OVERLAYS,
         "version": VERSION,
         "sih_id": SIH_ID,
+        "nugen_configured": bool(NUGEN_API_KEY),
+        "nugen_model_id": NUGEN_MODEL_ID,
+        "nugen_base_model": NUGEN_BASE_MODEL,
     }

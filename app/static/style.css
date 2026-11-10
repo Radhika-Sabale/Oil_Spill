@@ -1200,3 +1200,158 @@ button.mini, .mini {
   line-height: 1.4;
   word-break: break-word;
 }
+
+/* ----------------------------------------------------------- NuGen AI Assistant */
+
+.assistant-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.assistant-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.assistant-disclaimer {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  margin-top: 6px;
+  background: color-mix(in srgb, var(--panel-2) 90%, var(--bg));
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: 400 10px/1.4 var(--sans);
+  color: var(--ink-3);
+}
+.assistant-disclaimer .disclaimer-ic {
+  font-size: 11px;
+  color: var(--cyan);
+  flex: none;
+}
+.assistant-chat-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.assistant-chat-log {
+  flex: 1 1 auto;
+  min-height: 140px;
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
+}
+.chat-bubble {
+  padding: 8px 10px;
+  border-radius: 6px;
+  max-width: 94%;
+}
+.chat-bubble.ai {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  align-self: flex-start;
+}
+.chat-bubble.user {
+  background: color-mix(in srgb, var(--accent) 14%, var(--panel-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  align-self: flex-end;
+}
+.chat-bubble-author {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  font: 600 9.5px var(--sans);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.chat-badge {
+  font: 500 8.5px var(--mono);
+  text-transform: none;
+  padding: 1px 4px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+}
+.chat-bubble-body {
+  margin-top: 4px;
+  font: 400 11.5px/1.45 var(--sans);
+  color: var(--ink);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.chat-bubble-body p {
+  margin: 0 0 6px 0;
+}
+.chat-bubble-body p:last-child {
+  margin-bottom: 0;
+}
+.assistant-starters {
+  margin-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+}
+.starters-label {
+  font: 600 9.5px var(--sans);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin-bottom: 5px;
+}
+.starter-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.starter-chip {
+  text-align: left;
+  font: 400 10.5px/1.35 var(--sans);
+  color: var(--ink-2);
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all .15s ease;
+}
+.starter-chip:hover {
+  border-color: var(--accent);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-2));
+}
+.assistant-input-block {
+  padding-top: 10px;
+}
+.assistant-input-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+#assistant-input {
+  flex: 1 1 auto;
+  font: 400 11.5px var(--sans);
+  padding: 6px 9px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+}
+#assistant-input:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.assistant-alert {
+  margin-top: 6px;
+  padding: 6px 8px;
+  font: 400 10.5px/1.4 var(--sans);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--warn) 12%, var(--panel-2));
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, var(--line));
+  color: color-mix(in srgb, var(--warn) 80%, var(--ink));
+}
+
